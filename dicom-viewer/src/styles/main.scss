@@ -130,6 +130,27 @@ body {
   }
 }
 
+// Ant Design Table Row Highlighting for Comparison
+.ant-table {
+  .row-removed {
+    background: rgba($error-color, 0.08) !important;
+    border-left: 3px solid $error-color;
+
+    &:hover > td {
+      background: rgba($error-color, 0.12) !important;
+    }
+  }
+
+  .row-modified {
+    background: rgba($warning-color, 0.08) !important;
+    border-left: 3px solid $warning-color;
+
+    &:hover > td {
+      background: rgba($warning-color, 0.12) !important;
+    }
+  }
+}
+
 // Upload Styles
 .upload-area {
   border: 2px dashed $border-color;
