@@ -1,0 +1,186 @@
+/**
+ * Cornerstone.js Service
+ * Handles initialization and configuration of Cornerstone for DICOM rendering
+ */
+
+import * as cornerstone from '@cornerstonejs/core';
+import * as cornerstoneTools from '@cornerstonejs/tools';
+import cornerstoneWADOImageLoader from '@cornerstonejs/streaming-image-volume-loader';
+import dicomParser from 'dicom-parser';
+
+// Initialize flag
+let isInitialized = false;
+
+/**
+ * Initialize Cornerstone and its dependencies
+ */
+export async function initializeCornerstoneCore() {
+  if (isInitialized) {
+    return;
+  }
+
+  try {
+    // Configure and initialize Cornerstone
+    await cornerstone.init();
+
+    // Configure WADO Image Loader
+    cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+    cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
+
+    // Configure web worker for decoding
+    const config = {
+      maxWebWorkers: navigator.hardwareConcurrency || 1,
+      startWebWorkersOnDemand: true,
+      taskConfiguration: {
+        decodeTask: {
+          initializeCodecsOnStartup: false,
+        },
+      },
+    };
+
+    cornerstoneWADOImageLoader.webWorkerManager.initialize(config);
+
+    // Initialize Cornerstone Tools
+    cornerstoneTools.init();
+
+    isInitialized = true;
+    console.log('Cornerstone initialized successfully');
+  } catch (error) {
+    console.error('Error initializing Cornerstone:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create an image ID from ArrayBuffer
+ */
+export function createImageId(arrayBuffer: ArrayBuffer, fileId: string): string {
+  // Convert ArrayBuffer to Blob
+  const blob = new Blob([arrayBuffer], { type: 'application/dicom' });
+
+  // Create object URL
+  const url = URL.createObjectURL(blob);
+
+  // Create WADO-RS image ID
+  const imageId = `wadouri:${url}`;
+
+  return imageId;
+}
+
+/**
+ * Load and display an image in a Cornerstone viewport
+ */
+export async function loadAndDisplayImage(
+  element: HTMLDivElement,
+  imageId: string
+) {
+  try {
+    // Enable the element for Cornerstone
+    const enabledElement = cornerstone.getEnabledElement(element);
+
+    if (!enabledElement) {
+      // Enable element if not already enabled
+      const viewportInput = {
+        viewportId: `viewport-${Date.now()}`,
+        type: cornerstone.Enums.ViewportType.STACK,
+        element,
+        defaultOptions: {
+          background: [0, 0, 0] as [number, number, number],
+        },
+      };
+
+      cornerstone.RenderingEngine.create('renderingEngine');
+    }
+
+    // Load the image
+    const image = await cornerstone.imageLoader.loadImage(imageId);
+
+    // Display the image
+    await cornerstone.setViewportImages(element, [imageId]);
+
+    // Render
+    cornerstone.renderImage(element);
+
+    return image;
+  } catch (error) {
+    console.error('Error loading image:', error);
+    throw error;
+  }
+}
+
+/**
+ * Add tools to a viewport
+ */
+export function addToolsToViewport(element: HTMLDivElement) {
+  const {
+    PanTool,
+    ZoomTool,
+    WindowLevelTool,
+    StackScrollTool,
+    LengthTool,
+    RectangleROITool,
+  } = cornerstoneTools;
+
+  // Add tools
+  cornerstoneTools.addTool(PanTool);
+  cornerstoneTools.addTool(ZoomTool);
+  cornerstoneTools.addTool(WindowLevelTool);
+  cornerstoneTools.addTool(StackScrollTool);
+  cornerstoneTools.addTool(LengthTool);
+  cornerstoneTools.addTool(RectangleROITool);
+
+  // Set initial tool active states
+  cornerstoneTools.setToolActive('Pan', { mouseButtonMask: 4 }); // Middle mouse
+  cornerstoneTools.setToolActive('Zoom', { mouseButtonMask: 2 }); // Right mouse
+  cornerstoneTools.setToolActive('WindowLevel', { mouseButtonMask: 1 }); // Left mouse
+  cornerstoneTools.setToolActive('StackScroll', { mouseButtonMask: 0 }); // Mouse wheel
+}
+
+/**
+ * Reset viewport to default state
+ */
+export function resetViewport(element: HTMLDivElement) {
+  try {
+    cornerstone.reset(element);
+  } catch (error) {
+    console.error('Error resetting viewport:', error);
+  }
+}
+
+/**
+ * Clean up Cornerstone element
+ */
+export function disableElement(element: HTMLDivElement) {
+  try {
+    const enabledElement = cornerstone.getEnabledElement(element);
+    if (enabledElement) {
+      cornerstone.disable(element);
+    }
+  } catch (error) {
+    // Element might not be enabled
+    console.debug('Element was not enabled:', error);
+  }
+}
+
+/**
+ * Get viewport information
+ */
+export function getViewport(element: HTMLDivElement) {
+  try {
+    return cornerstone.getViewport(element);
+  } catch (error) {
+    console.error('Error getting viewport:', error);
+    return null;
+  }
+}
+
+/**
+ * Set viewport parameters
+ */
+export function setViewport(element: HTMLDivElement, viewport: any) {
+  try {
+    cornerstone.setViewport(element, viewport);
+  } catch (error) {
+    console.error('Error setting viewport:', error);
+  }
+}
