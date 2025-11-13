@@ -2,7 +2,7 @@
  * Custom hook for DICOM file upload operations
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '@store';
 import {
   addFiles,
@@ -12,39 +12,54 @@ import {
 } from '@store/slices/dicomSlice';
 import {
   processDicomFile,
-  processDicomFiles,
 } from '@store/slices/dicomThunks';
 import { addNotification } from '@store/slices/uiSlice';
-import type { DicomFile } from '@store/types';
 
 export function useDicomUpload() {
   const dispatch = useAppDispatch();
   const { originalFiles, currentFileIndex, isProcessing } = useAppSelector(
     (state) => state.dicom
   );
+  const previousFilesCount = useRef(0);
 
   /**
    * Handle file upload
    */
   const handleFileUpload = useCallback(
-    async (files: File[]) => {
-      // Add files to store
+    (files: File[]) => {
+      // Add files to store - this will add them with generated IDs
       dispatch(addFiles(files));
-
-      // Create file objects for processing
-      const newFiles: DicomFile[] = files.map((file, index) => ({
-        id: `${Date.now()}-${Math.random()}-${index}`,
-        file,
-        fileName: file.name,
-        status: 'pending',
-        progress: 0,
-      }));
-
-      // Process files
-      await dispatch(processDicomFiles(newFiles));
+      // The processing will happen in the useEffect below
     },
     [dispatch]
   );
+
+  /**
+   * Process newly added files automatically
+   */
+  useEffect(() => {
+    const currentCount = originalFiles.length;
+    console.log('useDicomUpload: Files count:', currentCount, 'Previous:', previousFilesCount.current);
+    console.log('useDicomUpload: All files:', originalFiles);
+    
+    // If new files were added (count increased)
+    if (currentCount > previousFilesCount.current) {
+      const newFilesCount = currentCount - previousFilesCount.current;
+      const newFiles = originalFiles.slice(-newFilesCount);
+      console.log('useDicomUpload: New files to process:', newFiles);
+      
+      // Process each newly added file that's in pending status
+      newFiles.forEach((dicomFile) => {
+        console.log('useDicomUpload: Checking file:', dicomFile.fileName, 'Status:', dicomFile.status);
+        if (dicomFile.status === 'pending') {
+          console.log('useDicomUpload: Dispatching processDicomFile for:', dicomFile.id);
+          dispatch(processDicomFile({ id: dicomFile.id, file: dicomFile.file }));
+        }
+      });
+    }
+    
+    previousFilesCount.current = currentCount;
+  }, [originalFiles, dispatch]);
 
   /**
    * Handle single file processing

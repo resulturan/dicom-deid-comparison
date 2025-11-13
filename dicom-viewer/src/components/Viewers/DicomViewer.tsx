@@ -46,13 +46,19 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
   );
 
   useEffect(() => {
-    if (!file || !file.imageData || !viewerRef.current) {
+    if (!file || !viewerRef.current) {
       return;
+    }
+
+    // Show loading if file is being processed
+    if (file.status === 'processing' || file.status === 'uploading') {
+      setLoading(true);
+    } else {
+      setLoading(false);
     }
 
     // For Phase 5, we'll display a placeholder with viewport transformations
     // Full Cornerstone integration will be implemented in later phase
-    setLoading(false);
   }, [file]);
 
   // Mouse wheel for zoom
@@ -218,27 +224,44 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
           overflow: 'hidden',
         }}
       >
-        {/* Placeholder with viewport transformations */}
-        <div
-          style={{
-            textAlign: 'center',
-            color: '#999',
-            transform: `translate(${viewport.translation.x}px, ${viewport.translation.y}px) scale(${viewport.scale}) rotate(${viewport.rotation}deg)`,
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-          }}
-        >
-          <div style={{ fontSize: 64, marginBottom: 16 }}>🏥</div>
-          <div style={{ fontSize: 18, marginBottom: 8 }}>DICOM Viewer Canvas</div>
-          <div style={{ fontSize: 14, color: '#666' }}>
-            {file.fileName}
-          </div>
-          {file.metadata && (
-            <div style={{ fontSize: 12, color: '#555', marginTop: 8 }}>
-              {file.metadata.columns} × {file.metadata.rows} pixels
+        {file.status === 'complete' && file.imageData ? (
+          /* Placeholder with viewport transformations */
+          <div
+            style={{
+              textAlign: 'center',
+              color: '#999',
+              transform: `translate(${viewport.translation.x}px, ${viewport.translation.y}px) scale(${viewport.scale}) rotate(${viewport.rotation}deg)`,
+              transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+            }}
+          >
+            <div style={{ fontSize: 64, marginBottom: 16 }}>🏥</div>
+            <div style={{ fontSize: 18, marginBottom: 8 }}>DICOM Viewer Canvas</div>
+            <div style={{ fontSize: 14, color: '#666' }}>
+              {file.fileName}
             </div>
-          )}
-          <canvas ref={canvasRef} style={{ display: 'none' }} />
-        </div>
+            {file.metadata && (
+              <div style={{ fontSize: 12, color: '#555', marginTop: 8 }}>
+                {file.metadata.columns} × {file.metadata.rows} pixels
+              </div>
+            )}
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+          </div>
+        ) : file.status === 'error' ? (
+          <div style={{ textAlign: 'center', color: '#ff4d4f' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+            <div style={{ fontSize: 16 }}>Error loading DICOM file</div>
+            {file.error && (
+              <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>
+                {file.error}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', color: '#666' }}>
+            <Spin size="large" />
+            <div style={{ fontSize: 14, marginTop: 16 }}>Processing {file.fileName}...</div>
+          </div>
+        )}
       </div>
 
       {/* Viewer Overlay - contains tools and info */}
