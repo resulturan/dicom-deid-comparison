@@ -6,18 +6,21 @@ import LoadingOverlay from '@components/Layout/LoadingOverlay';
 import DeidentificationSettings from '@components/Controls/DeidentificationSettings';
 import MetadataDrawer from '@components/Metadata/MetadataDrawer';
 import ExportDrawer from '@components/Export/ExportDrawer';
+import ErrorBoundary from '@components/ErrorBoundary/ErrorBoundary';
 
 function App() {
   return (
-    <MainLayout>
-      <DualViewerContainer />
-      <DicomUploader />
-      <DeidentificationSettings />
-      <MetadataDrawer />
-      <ExportDrawer />
-      <NotificationHandler />
-      <LoadingOverlay />
-    </MainLayout>
+    <ErrorBoundary>
+      <MainLayout>
+        <DualViewerContainer />
+        <DicomUploader />
+        <DeidentificationSettings />
+        <MetadataDrawer />
+        <ExportDrawer />
+        <NotificationHandler />
+        <LoadingOverlay />
+      </MainLayout>
+    </ErrorBoundary>
   );
 }
 
