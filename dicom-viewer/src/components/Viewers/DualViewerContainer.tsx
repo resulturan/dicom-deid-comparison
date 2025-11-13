@@ -4,6 +4,7 @@ import { useAppSelector } from '@store';
 import { useDicomUpload } from '@hooks/useDicomUpload';
 import { formatDicomDate, formatDicomTime } from '@services/dicom/parser';
 import DicomViewer from './DicomViewer';
+import ViewerSyncControls from '@components/Controls/ViewerSyncControls';
 
 const { Title, Text } = Typography;
 
@@ -78,7 +79,7 @@ const DualViewerContainer = () => {
 
                 {/* DICOM Viewer */}
                 <div style={{ flex: 1, minHeight: '300px' }}>
-                  <DicomViewer file={currentFile} />
+                  <DicomViewer file={currentFile} viewerId="left" />
                 </div>
 
                 {/* File Metadata */}
@@ -172,7 +173,7 @@ const DualViewerContainer = () => {
               <>
                 {/* Deidentified Viewer */}
                 <div style={{ flex: 1, minHeight: '300px' }}>
-                  <DicomViewer file={currentDeidentifiedFile} />
+                  <DicomViewer file={currentDeidentifiedFile} viewerId="right" />
                 </div>
 
                 {/* Deidentified Metadata */}
@@ -217,6 +218,9 @@ const DualViewerContainer = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Viewer Synchronization Controls */}
+      {hasFiles && <ViewerSyncControls />}
     </div>
   );
 };
