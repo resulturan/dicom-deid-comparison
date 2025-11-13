@@ -3,12 +3,9 @@
  * Handles parsing of DICOM files and extraction of metadata
  */
 
-import * as dcmjs from 'dcmjs';
 import * as dicomParser from 'dicom-parser';
 import type { DicomMetadata } from '@store/types';
 import { DICOM_TAGS } from '@utils/dicomTags';
-
-const { DicomMessage } = dcmjs.data;
 
 /**
  * Parse a DICOM file and extract metadata
@@ -22,20 +19,16 @@ export async function parseDicomFile(file: File): Promise<{
     // Read file as ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
 
-    // Parse using dicom-parser first for validation
+    // Parse using dicom-parser
     const byteArray = new Uint8Array(arrayBuffer);
-    dicomParser.parseDicom(byteArray); // Validates DICOM structure
+    const dataSet = dicomParser.parseDicom(byteArray);
 
-    // Parse using dcmjs for easier data access
-    const dicomData = DicomMessage.readFile(arrayBuffer);
-    const dataset = dcmjs.data.DicomMetaData.naturalizeDataset(dicomData.dict);
-
-    // Extract metadata
-    const metadata = extractMetadata(dataset);
+    // Extract metadata directly from dicom-parser dataset
+    const metadata = extractMetadataFromDicomParser(dataSet);
 
     return {
       metadata,
-      dataset,
+      dataset: dataSet,
       imageData: arrayBuffer,
     };
   } catch (error) {
@@ -45,7 +38,72 @@ export async function parseDicomFile(file: File): Promise<{
 }
 
 /**
- * Extract structured metadata from DICOM dataset
+ * Extract structured metadata from dicom-parser dataset
+ */
+export function extractMetadataFromDicomParser(dataSet: any): DicomMetadata {
+  const getStringFromTag = (tag: string): string | undefined => {
+    try {
+      const element = dataSet.elements[tag];
+      if (!element) return undefined;
+      return dataSet.string(tag)?.trim();
+    } catch {
+      return undefined;
+    }
+  };
+
+  const getNumberFromTag = (tag: string): number | undefined => {
+    try {
+      const str = getStringFromTag(tag);
+      if (!str) return undefined;
+      const num = Number(str);
+      return isNaN(num) ? undefined : num;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const metadata: DicomMetadata = {
+    // Patient Information
+    patientName: getStringFromTag('x00100010'),
+    patientID: getStringFromTag('x00100020'),
+    patientBirthDate: getStringFromTag('x00100030'),
+    patientSex: getStringFromTag('x00100040'),
+    patientAge: getStringFromTag('x00101010'),
+
+    // Study Information
+    studyInstanceUID: getStringFromTag('x0020000d'),
+    studyDate: getStringFromTag('x00080020'),
+    studyTime: getStringFromTag('x00080030'),
+    studyDescription: getStringFromTag('x00081030'),
+    accessionNumber: getStringFromTag('x00080050'),
+
+    // Series Information
+    seriesInstanceUID: getStringFromTag('x0020000e'),
+    seriesNumber: getStringFromTag('x00200011'),
+    seriesDescription: getStringFromTag('x0008103e'),
+    modality: getStringFromTag('x00080060'),
+
+    // Image Information
+    sopInstanceUID: getStringFromTag('x00080018'),
+    instanceNumber: getNumberFromTag('x00200013'),
+    rows: getNumberFromTag('x00280010'),
+    columns: getNumberFromTag('x00280011'),
+    numberOfFrames: getNumberFromTag('x00280008'),
+
+    // Additional metadata
+    institutionName: getStringFromTag('x00080080'),
+    referringPhysicianName: getStringFromTag('x00080090'),
+    performingPhysicianName: getStringFromTag('x00081050'),
+
+    // Store all tags for comparison
+    allTags: dataSet,
+  };
+
+  return metadata;
+}
+
+/**
+ * Extract structured metadata from DICOM dataset (legacy - for dcmjs format)
  */
 export function extractMetadata(dataset: any): DicomMetadata {
   const metadata: DicomMetadata = {
