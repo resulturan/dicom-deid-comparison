@@ -4,15 +4,25 @@ import {
   SettingOutlined,
   InfoCircleOutlined,
   FileTextOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
-import { useAppDispatch } from '@store';
+import { useAppDispatch, useAppSelector } from '@store';
 import { toggleUploadDrawer, toggleMetadataDrawer, toggleSettingsDrawer } from '@store/slices/uiSlice';
+import { deidentifyAllFiles } from '@store/slices/dicomThunks';
 
 const { Header: AntHeader } = Layout;
 const { Title } = Typography;
 
 const Header = () => {
   const dispatch = useAppDispatch();
+  const { originalFiles, deidentifiedFiles, isProcessing } = useAppSelector((state) => state.dicom);
+
+  const handleDeidentify = () => {
+    dispatch(deidentifyAllFiles());
+  };
+
+  const hasFiles = originalFiles.length > 0;
+  const hasDeidentified = deidentifiedFiles.length > 0;
 
   return (
     <AntHeader
@@ -40,6 +50,15 @@ const Header = () => {
           onClick={() => dispatch(toggleUploadDrawer())}
         >
           Upload DICOM
+        </Button>
+        <Button
+          type={hasDeidentified ? 'default' : 'primary'}
+          icon={<SafetyOutlined />}
+          onClick={handleDeidentify}
+          disabled={!hasFiles || isProcessing}
+          danger={!hasDeidentified}
+        >
+          {hasDeidentified ? 'Re-Deidentify' : 'Deidentify'}
         </Button>
         <Button
           icon={<FileTextOutlined />}

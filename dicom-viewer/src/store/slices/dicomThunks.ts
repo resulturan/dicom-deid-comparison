@@ -6,8 +6,9 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import type { DicomFile } from '../types';
 import { parseDicomFile } from '@services/dicom/parser';
 import { validateFile } from '@services/dicom/validator';
-import { updateFileStatus, updateFileMetadata } from './dicomSlice';
-import { addNotification } from './uiSlice';
+import { deidentifyMetadata } from '@services/dicom/deidentifier';
+import { updateFileStatus, updateFileMetadata, setDeidentifiedFiles, setProcessing } from './dicomSlice';
+import { addNotification, setLoading } from './uiSlice';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '@utils/constants';
 
 /**
@@ -125,5 +126,100 @@ export const reprocessDicomFile = createAsyncThunk(
     { dispatch }
   ) => {
     return dispatch(processDicomFile({ id, file }));
+  }
+);
+
+/**
+ * Deidentify all loaded DICOM files
+ */
+export const deidentifyAllFiles = createAsyncThunk(
+  'dicom/deidentifyAllFiles',
+  async (_, { getState, dispatch }) => {
+    try {
+      const state = getState() as any;
+      const { originalFiles, deidentificationOptions } = state.dicom;
+
+      if (originalFiles.length === 0) {
+        dispatch(
+          addNotification({
+            type: 'warning',
+            message: 'No files to deidentify',
+            description: ERROR_MESSAGES.NO_FILES_UPLOADED,
+          })
+        );
+        return;
+      }
+
+      // Set processing state
+      dispatch(setProcessing(true));
+      dispatch(setLoading({ loading: true, message: 'Deidentifying DICOM files...' }));
+
+      // Deidentify each file
+      const deidentifiedFiles: DicomFile[] = [];
+
+      for (const originalFile of originalFiles) {
+        if (!originalFile.metadata) {
+          continue;
+        }
+
+        try {
+          // Deidentify metadata
+          const deidentifiedMetadata = deidentifyMetadata(
+            originalFile.metadata,
+            deidentificationOptions
+          );
+
+          // Create deidentified file object
+          const deidentifiedFile: DicomFile = {
+            ...originalFile,
+            id: `deid-${originalFile.id}`,
+            fileName: `DEID_${originalFile.fileName}`,
+            metadata: deidentifiedMetadata,
+            status: 'complete',
+            progress: 100,
+          };
+
+          deidentifiedFiles.push(deidentifiedFile);
+        } catch (error) {
+          console.error(`Error deidentifying file ${originalFile.fileName}:`, error);
+          dispatch(
+            addNotification({
+              type: 'error',
+              message: 'Deidentification failed',
+              description: `Failed to deidentify ${originalFile.fileName}`,
+            })
+          );
+        }
+      }
+
+      // Update Redux with deidentified files
+      dispatch(setDeidentifiedFiles(deidentifiedFiles));
+
+      // Success notification
+      dispatch(
+        addNotification({
+          type: 'success',
+          message: SUCCESS_MESSAGES.DEIDENTIFICATION_COMPLETE,
+          description: `${deidentifiedFiles.length} file(s) deidentified successfully`,
+        })
+      );
+
+      return {
+        count: deidentifiedFiles.length,
+        files: deidentifiedFiles,
+      };
+    } catch (error) {
+      dispatch(
+        addNotification({
+          type: 'error',
+          message: 'Deidentification failed',
+          description: error instanceof Error ? error.message : ERROR_MESSAGES.DEIDENTIFICATION_FAILED,
+        })
+      );
+      throw error;
+    } finally {
+      dispatch(setProcessing(false));
+      dispatch(setLoading({ loading: false }));
+    }
   }
 );
