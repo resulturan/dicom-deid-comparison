@@ -3,6 +3,7 @@ import { EyeOutlined, SafetyOutlined, FileImageOutlined } from '@ant-design/icon
 import { useAppSelector } from '@store';
 import { useDicomUpload } from '@hooks/useDicomUpload';
 import { formatDicomDate, formatDicomTime } from '@services/dicom/parser';
+import DicomViewer from './DicomViewer';
 
 const { Title, Text } = Typography;
 
@@ -73,30 +74,9 @@ const DualViewerContainer = () => {
                   </div>
                 )}
 
-                {/* Viewer Placeholder */}
-                <div style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: '#0a0a0a',
-                  border: '1px dashed #333',
-                  borderRadius: '8px',
-                  minHeight: '300px',
-                }}>
-                  <Space direction="vertical" align="center">
-                    <Title level={4} style={{ color: '#666', margin: 0 }}>
-                      Viewer Loading Area
-                    </Title>
-                    <Text style={{ color: '#555' }}>
-                      OHIF Viewer will be integrated in Phase 3
-                    </Text>
-                    {currentFile && (
-                      <Tag color="blue" style={{ marginTop: 8 }}>
-                        {currentFile.fileName}
-                      </Tag>
-                    )}
-                  </Space>
+                {/* DICOM Viewer */}
+                <div style={{ flex: 1, minHeight: '300px' }}>
+                  <DicomViewer file={currentFile} />
                 </div>
 
                 {/* File Metadata */}
