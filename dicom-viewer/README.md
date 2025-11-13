@@ -15,9 +15,11 @@ A professional web-based DICOM viewer application for comparing original and dei
 ### Advanced Features
 - **Configurable Deidentification**: Customizable options for PHI removal, date shifting, and UID anonymization
 - **Interactive Viewer Tools**: Pan, zoom, window/level, with mouse and keyboard support
+- **Keyboard Shortcuts**: Comprehensive shortcuts for all major actions (upload, deidentify, export, navigate, etc.)
 - **Real-time Validation**: File validation with detailed error messages
 - **Batch Processing**: Process and deidentify multiple DICOM files simultaneously
 - **Client-side Processing**: Complete privacy - files never leave your computer
+- **Enhanced UX**: Smooth animations, helpful empty states, and tooltips throughout
 
 ## 🚀 Tech Stack
 
@@ -367,13 +369,36 @@ MIT
 - Full DICOM rendering to be implemented
 - Large file handling (>100MB) may be slow in some browsers
 
+## ⌨️ Keyboard Shortcuts
+
+The application includes comprehensive keyboard shortcuts for efficient workflow:
+
+### File Operations
+- `Ctrl+U` - Upload DICOM files
+- `Ctrl+D` - Deidentify all files
+- `Ctrl+E` - Export files
+
+### View Operations
+- `Ctrl+M` - Open metadata comparison
+- `Ctrl+,` - Open settings
+- `Ctrl+Shift+S` - Toggle viewer synchronization
+- `Ctrl+Shift+R` - Reset viewports
+
+### Navigation
+- `Arrow Up` - Previous slice
+- `Arrow Down` - Next slice
+
+### Help
+- `Shift+?` - Show keyboard shortcuts modal
+
+Press `Shift+?` at any time to view all available shortcuts in an interactive modal with search functionality.
+
 ## 🚀 Future Enhancements
 
 - Full Cornerstone.js integration for DICOM rendering
 - Support for DICOM series (multi-frame images)
 - Measurement tools (length, angle, ROI)
 - Import/export deidentification profiles
-- Keyboard shortcuts
 - Dark/light theme toggle
 - Multi-language support
 

@@ -1,4 +1,4 @@
-import { Layout, Button, Space, Typography } from 'antd';
+import { Layout, Button, Space, Typography, Tooltip } from 'antd';
 import {
   UploadOutlined,
   SettingOutlined,
@@ -6,6 +6,7 @@ import {
   FileTextOutlined,
   SafetyOutlined,
   DownloadOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '@store';
 import { toggleUploadDrawer, toggleMetadataDrawer, toggleSettingsDrawer, toggleExportDrawer } from '@store/slices/uiSlice';
@@ -20,6 +21,10 @@ const Header = () => {
 
   const handleDeidentify = () => {
     dispatch(deidentifyAllFiles());
+  };
+
+  const handleShowShortcuts = () => {
+    window.dispatchEvent(new CustomEvent('shortcuts-modal-requested'));
   };
 
   const hasFiles = originalFiles.length > 0;
@@ -45,41 +50,59 @@ const Header = () => {
       </div>
 
       <Space size="middle">
-        <Button
-          type="primary"
-          icon={<UploadOutlined />}
-          onClick={() => dispatch(toggleUploadDrawer())}
-        >
-          Upload DICOM
-        </Button>
-        <Button
-          type={hasDeidentified ? 'default' : 'primary'}
-          icon={<SafetyOutlined />}
-          onClick={handleDeidentify}
-          disabled={!hasFiles || isProcessing}
-          danger={!hasDeidentified}
-        >
-          {hasDeidentified ? 'Re-Deidentify' : 'Deidentify'}
-        </Button>
-        <Button
-          icon={<DownloadOutlined />}
-          onClick={() => dispatch(toggleExportDrawer())}
-          disabled={!hasDeidentified}
-        >
-          Export
-        </Button>
-        <Button
-          icon={<FileTextOutlined />}
-          onClick={() => dispatch(toggleMetadataDrawer())}
-        >
-          Metadata
-        </Button>
-        <Button
-          icon={<SettingOutlined />}
-          onClick={() => dispatch(toggleSettingsDrawer())}
-        >
-          Settings
-        </Button>
+        <Tooltip title="Upload DICOM files (Ctrl+U)">
+          <Button
+            type="primary"
+            icon={<UploadOutlined />}
+            onClick={() => dispatch(toggleUploadDrawer())}
+          >
+            Upload DICOM
+          </Button>
+        </Tooltip>
+        <Tooltip title="Deidentify all files (Ctrl+D)">
+          <Button
+            type={hasDeidentified ? 'default' : 'primary'}
+            icon={<SafetyOutlined />}
+            onClick={handleDeidentify}
+            disabled={!hasFiles || isProcessing}
+            danger={!hasDeidentified}
+          >
+            {hasDeidentified ? 'Re-Deidentify' : 'Deidentify'}
+          </Button>
+        </Tooltip>
+        <Tooltip title="Export files (Ctrl+E)">
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={() => dispatch(toggleExportDrawer())}
+            disabled={!hasDeidentified}
+          >
+            Export
+          </Button>
+        </Tooltip>
+        <Tooltip title="View metadata comparison (Ctrl+M)">
+          <Button
+            icon={<FileTextOutlined />}
+            onClick={() => dispatch(toggleMetadataDrawer())}
+          >
+            Metadata
+          </Button>
+        </Tooltip>
+        <Tooltip title="Deidentification settings (Ctrl+,)">
+          <Button
+            icon={<SettingOutlined />}
+            onClick={() => dispatch(toggleSettingsDrawer())}
+          >
+            Settings
+          </Button>
+        </Tooltip>
+        <Tooltip title="Keyboard shortcuts (Shift+?)">
+          <Button
+            icon={<QuestionCircleOutlined />}
+            onClick={handleShowShortcuts}
+          >
+            Help
+          </Button>
+        </Tooltip>
       </Space>
     </AntHeader>
   );

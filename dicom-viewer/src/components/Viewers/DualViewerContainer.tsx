@@ -1,14 +1,17 @@
-import { Row, Col, Card, Typography, Empty, Space, Tag, Select, Descriptions } from 'antd';
-import { EyeOutlined, SafetyOutlined, FileImageOutlined } from '@ant-design/icons';
-import { useAppSelector } from '@store';
+import { Row, Col, Card, Typography, Space, Tag, Select, Descriptions } from 'antd';
+import { EyeOutlined, SafetyOutlined, FileImageOutlined, InboxOutlined } from '@ant-design/icons';
+import { useAppSelector, useAppDispatch } from '@store';
 import { useDicomUpload } from '@hooks/useDicomUpload';
 import { formatDicomDate, formatDicomTime } from '@services/dicom/parser';
+import { toggleUploadDrawer } from '@store/slices/uiSlice';
 import DicomViewer from './DicomViewer';
 import ViewerSyncControls from '@components/Controls/ViewerSyncControls';
+import EmptyState from '@components/Layout/EmptyState';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const DualViewerContainer = () => {
+  const dispatch = useAppDispatch();
   const { originalFiles, deidentifiedFiles, currentFileIndex } = useAppSelector((state) => state.dicom);
   const { handleSelectFile } = useDicomUpload();
 
@@ -40,15 +43,17 @@ const DualViewerContainer = () => {
             }
           >
             {!hasFiles ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Empty
-                  description={
-                    <Text style={{ color: '#888' }}>
-                      Upload DICOM files to start viewing
-                    </Text>
-                  }
-                />
-              </div>
+              <EmptyState
+                icon={<InboxOutlined style={{ fontSize: 72, color: '#666' }} />}
+                title="No DICOM Files"
+                description="Upload DICOM files to get started with deidentification and comparison. Supports .dcm and .dicom file formats."
+                action={{
+                  label: 'Upload DICOM Files',
+                  onClick: () => dispatch(toggleUploadDrawer()),
+                  icon: <FileImageOutlined />,
+                }}
+                style={{ padding: '40px 24px' }}
+              />
             ) : (
               <>
                 {/* File Selector */}
@@ -148,27 +153,24 @@ const DualViewerContainer = () => {
             }
           >
             {!hasFiles ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Empty
-                  description={
-                    <Text style={{ color: '#888' }}>
-                      Upload DICOM files to start viewing
-                    </Text>
-                  }
-                />
-              </div>
+              <EmptyState
+                icon={<InboxOutlined style={{ fontSize: 72, color: '#666' }} />}
+                title="No DICOM Files"
+                description="Upload DICOM files to get started with deidentification and comparison."
+                action={{
+                  label: 'Upload DICOM Files',
+                  onClick: () => dispatch(toggleUploadDrawer()),
+                  icon: <FileImageOutlined />,
+                }}
+                style={{ padding: '40px 24px' }}
+              />
             ) : !hasDeidentified ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Space direction="vertical" align="center">
-                  <SafetyOutlined style={{ fontSize: 48, color: '#666' }} />
-                  <Title level={4} style={{ color: '#666', margin: 0 }}>
-                    No Deidentified Files
-                  </Title>
-                  <Text style={{ color: '#555' }}>
-                    Click "Deidentify" to create deidentified versions
-                  </Text>
-                </Space>
-              </div>
+              <EmptyState
+                icon={<SafetyOutlined style={{ fontSize: 72, color: '#666' }} />}
+                title="No Deidentified Files Yet"
+                description="Deidentify your DICOM files to remove protected health information (PHI) while preserving clinical utility. The deidentified version will appear here for comparison."
+                style={{ padding: '40px 24px' }}
+              />
             ) : (
               <>
                 {/* Deidentified Viewer */}
