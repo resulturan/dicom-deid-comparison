@@ -30,13 +30,15 @@ const dicomSlice = createSlice({
   reducers: {
     // File management
     addFiles: (state, action: PayloadAction<File[]>) => {
-      const newFiles: DicomFile[] = action.payload.map((file) => ({
-        id: `${Date.now()}-${Math.random()}`,
+      const timestamp = Date.now();
+      const newFiles: DicomFile[] = action.payload.map((file, index) => ({
+        id: `${timestamp}-${index}-${Math.random().toString(36).substring(2, 9)}`,
         file,
         fileName: file.name,
         status: 'pending',
         progress: 0,
       }));
+      console.log('addFiles: Adding', newFiles.length, 'files with IDs:', newFiles.map(f => f.id));
       state.originalFiles.push(...newFiles);
     },
 

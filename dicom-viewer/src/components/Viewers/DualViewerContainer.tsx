@@ -1,9 +1,11 @@
-import { Row, Col, Card, Typography, Space, Tag, Select, Descriptions } from 'antd';
-import { EyeOutlined, SafetyOutlined, FileImageOutlined, InboxOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Typography, Space, Tag, Select, Descriptions, Button } from 'antd';
+import { EyeOutlined, SafetyOutlined, FileImageOutlined, InboxOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { useEffect, useCallback, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '@store';
 import { useDicomUpload } from '@hooks/useDicomUpload';
 import { formatDicomDate, formatDicomTime } from '@services/dicom/parser';
 import { toggleUploadDrawer } from '@store/slices/uiSlice';
+import { setCurrentFileIndex } from '@store/slices/dicomSlice';
 import DicomViewer from './DicomViewer';
 import ViewerSyncControls from '@components/Controls/ViewerSyncControls';
 import EmptyState from '@components/Layout/EmptyState';
@@ -14,15 +16,69 @@ const DualViewerContainer = () => {
   const dispatch = useAppDispatch();
   const { originalFiles, deidentifiedFiles, currentFileIndex } = useAppSelector((state) => state.dicom);
   const { handleSelectFile } = useDicomUpload();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const hasFiles = originalFiles.length > 0;
   const currentFile = originalFiles[currentFileIndex];
   const currentDeidentifiedFile = deidentifiedFiles[currentFileIndex];
   const hasMetadata = currentFile?.metadata;
   const hasDeidentified = deidentifiedFiles.length > 0;
+  const hasMultipleFiles = originalFiles.length > 1;
+
+  // Debug: Log file count to help diagnose
+  useEffect(() => {
+    if (hasFiles) {
+      console.log('DualViewerContainer: Files loaded', {
+        totalFiles: originalFiles.length,
+        currentIndex: currentFileIndex,
+        hasMultipleFiles,
+        fileNames: originalFiles.map(f => f.fileName)
+      });
+    }
+  }, [hasFiles, originalFiles.length, currentFileIndex, hasMultipleFiles]);
+
+  // Navigation functions
+  const handlePreviousFile = useCallback(() => {
+    if (hasMultipleFiles) {
+      const prevIndex = currentFileIndex > 0 ? currentFileIndex - 1 : originalFiles.length - 1;
+      dispatch(setCurrentFileIndex(prevIndex));
+    }
+  }, [dispatch, currentFileIndex, originalFiles.length, hasMultipleFiles]);
+
+  const handleNextFile = useCallback(() => {
+    if (hasMultipleFiles) {
+      const nextIndex = currentFileIndex < originalFiles.length - 1 ? currentFileIndex + 1 : 0;
+      dispatch(setCurrentFileIndex(nextIndex));
+    }
+  }, [dispatch, currentFileIndex, originalFiles.length, hasMultipleFiles]);
+
+  // Mouse wheel navigation (when Ctrl or Shift is held, or when not over viewer)
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      // Only navigate files if Ctrl or Shift is held, or if scrolling outside viewer
+      const isOverViewer = (e.target as HTMLElement)?.closest('.viewer-container');
+      
+      if ((e.ctrlKey || e.shiftKey) && !isOverViewer && hasMultipleFiles) {
+        e.preventDefault();
+        if (e.deltaY > 0) {
+          handleNextFile();
+        } else {
+          handlePreviousFile();
+        }
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('wheel', handleWheel, { passive: false });
+      return () => {
+        container.removeEventListener('wheel', handleWheel);
+      };
+    }
+  }, [handleNextFile, handlePreviousFile, hasMultipleFiles]);
 
   return (
-    <div style={{ height: 'calc(100vh - 64px)', padding: '16px', background: '#000' }}>
+    <div ref={containerRef} style={{ height: 'calc(100vh - 64px)', padding: '16px', background: '#000' }}>
       <Row gutter={16} style={{ height: '100%' }}>
         {/* Original Viewer */}
         <Col span={12} style={{ height: '100%' }}>
@@ -56,31 +112,131 @@ const DualViewerContainer = () => {
               />
             ) : (
               <>
-                {/* File Selector */}
-                {originalFiles.length > 1 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                      <Text style={{ color: '#888', fontSize: 12 }}>Select File:</Text>
-                      <Select
-                        style={{ width: '100%' }}
-                        value={currentFileIndex}
-                        onChange={handleSelectFile}
-                        options={originalFiles.map((file, index) => ({
-                          value: index,
-                          label: (
-                            <Space>
-                              <FileImageOutlined />
+                {/* File Selector and Navigation - Always show when files exist */}
+                <div style={{ 
+                  marginBottom: 16, 
+                  padding: '12px 16px', 
+                  background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+                  borderRadius: 8,
+                  border: '1px solid rgba(64, 150, 255, 0.2)',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+                }}>
+                  <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                    {/* Navigation Controls Row */}
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      gap: 12,
+                      padding: '8px 0'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <FileImageOutlined style={{ color: '#4096ff', fontSize: 16 }} />
+                        <Text strong style={{ color: '#fff', fontSize: 14 }}>
+                          {hasMultipleFiles ? `File ${currentFileIndex + 1} of ${originalFiles.length}` : 'Current File'}
+                        </Text>
+                      </div>
+                      
+                      {hasMultipleFiles ? (
+                        <Space size="middle">
+                          <Button
+                            type="primary"
+                            size="middle"
+                            icon={<LeftOutlined />}
+                            onClick={handlePreviousFile}
+                            title="Previous file (←)"
+                            style={{
+                              background: 'linear-gradient(135deg, #4096ff 0%, #1677ff 100%)',
+                              border: 'none',
+                              boxShadow: '0 2px 4px rgba(64, 150, 255, 0.3)',
+                              fontWeight: 600,
+                              minWidth: 80
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.05)';
+                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(64, 150, 255, 0.5)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(64, 150, 255, 0.3)';
+                            }}
+                          >
+                            ← Prev
+                          </Button>
+                          
+                          <div style={{
+                            padding: '6px 16px',
+                            background: 'rgba(64, 150, 255, 0.1)',
+                            borderRadius: 6,
+                            border: '1px solid rgba(64, 150, 255, 0.3)',
+                            minWidth: 80,
+                            textAlign: 'center'
+                          }}>
+                            <Text strong style={{ color: '#4096ff', fontSize: 14 }}>
+                              {currentFileIndex + 1} / {originalFiles.length}
+                            </Text>
+                          </div>
+                          
+                          <Button
+                            type="primary"
+                            size="middle"
+                            icon={<RightOutlined />}
+                            onClick={handleNextFile}
+                            title="Next file (→)"
+                            style={{
+                              background: 'linear-gradient(135deg, #4096ff 0%, #1677ff 100%)',
+                              border: 'none',
+                              boxShadow: '0 2px 4px rgba(64, 150, 255, 0.3)',
+                              fontWeight: 600,
+                              minWidth: 80
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.05)';
+                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(64, 150, 255, 0.5)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                              e.currentTarget.style.boxShadow = '0 2px 4px rgba(64, 150, 255, 0.3)';
+                            }}
+                          >
+                            Next →
+                          </Button>
+                        </Space>
+                      ) : (
+                        <Tag color="blue" style={{ padding: '4px 12px', fontSize: 12 }}>
+                          1 file loaded
+                        </Tag>
+                      )}
+                    </div>
+                    
+                    {/* File Selector Dropdown */}
+                    <Select
+                      style={{ width: '100%' }}
+                      value={currentFileIndex}
+                      onChange={handleSelectFile}
+                      disabled={!hasMultipleFiles}
+                      placeholder="Select a file"
+                      size="large"
+                      options={originalFiles.map((file, index) => ({
+                        value: index,
+                        label: (
+                          <Space>
+                            <FileImageOutlined style={{ color: file.status === 'complete' ? '#52c41a' : '#faad14' }} />
+                            <span style={{ color: index === currentFileIndex ? '#4096ff' : 'inherit' }}>
                               {file.fileName}
-                              {file.status === 'complete' && (
-                                <Tag color="success" style={{ marginLeft: 8 }}>Ready</Tag>
-                              )}
-                            </Space>
-                          ),
-                        }))}
-                      />
-                    </Space>
-                  </div>
-                )}
+                            </span>
+                            {file.status === 'complete' && (
+                              <Tag color="success" style={{ marginLeft: 8 }}>Ready</Tag>
+                            )}
+                            {file.status === 'processing' && (
+                              <Tag color="processing" style={{ marginLeft: 8 }}>Processing</Tag>
+                            )}
+                          </Space>
+                        ),
+                      }))}
+                    />
+                  </Space>
+                </div>
 
                 {/* DICOM Viewer */}
                 <div style={{ flex: 1, minHeight: '300px' }}>

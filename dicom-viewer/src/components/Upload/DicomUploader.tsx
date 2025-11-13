@@ -7,12 +7,13 @@ import {
   LoadingOutlined,
   FileImageOutlined,
 } from '@ant-design/icons';
-import type { UploadProps } from 'antd';
+import type { UploadProps, UploadFile } from 'antd';
 import { useAppDispatch, useAppSelector } from '@store';
 import { closeUploadDrawer } from '@store/slices/uiSlice';
 import { useDicomUpload } from '@hooks/useDicomUpload';
 import { formatFileSize } from '@services/dicom/validator';
 import { formatDicomDate } from '@services/dicom/parser';
+import { useRef, useEffect, useCallback } from 'react';
 
 const { Dragger } = Upload;
 const { Title, Text } = Typography;
@@ -27,18 +28,113 @@ const DicomUploader = () => {
     handleRemoveFile,
     handleClearFiles,
   } = useDicomUpload();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const processedFilesRef = useRef<Set<string>>(new Set());
+
+  // Handle file selection from native input
+  const handleNativeFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
+      console.log('Native file input: Selected', files.length, 'files:', files.map(f => f.name));
+      
+      // Filter out already processed files
+      const newFiles = files.filter(file => {
+        const key = `${file.name}-${file.size}`;
+        if (processedFilesRef.current.has(key)) {
+          console.log('Skipping already processed file:', file.name);
+          return false;
+        }
+        processedFilesRef.current.add(key);
+        return true;
+      });
+      
+      if (newFiles.length > 0) {
+        console.log('Processing', newFiles.length, 'new files');
+        handleFileUpload(newFiles);
+      }
+      
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }, [handleFileUpload]);
 
   const uploadProps: UploadProps = {
     name: 'file',
     multiple: true,
     accept: '.dcm,.dicom',
-    beforeUpload: (_file, fileList) => {
-      // Process all files
-      handleFileUpload(fileList);
-      return false; // Prevent auto upload
+    customRequest: ({ file, onSuccess, onError }) => {
+      // Custom request handler - we don't actually upload, just mark as success
+      // This allows files to stay in fileList
+      console.log('customRequest called with file:', (file as File).name);
+      setTimeout(() => {
+        onSuccess?.({});
+      }, 10);
+    },
+    beforeUpload: () => {
+      // Don't return false - let customRequest handle it
+      // This ensures files are added to fileList
+      return true;
+    },
+    onChange: (info) => {
+      console.log('onChange - fileList length:', info.fileList.length);
+      console.log('onChange - fileList details:', info.fileList.map(f => ({
+        name: f.name,
+        uid: f.uid,
+        status: f.status,
+        hasOriginFileObj: !!f.originFileObj,
+        originFileObjType: f.originFileObj ? typeof f.originFileObj : 'none'
+      })));
+      
+      // Wait a bit to ensure all files are in the fileList
+      setTimeout(() => {
+        // Extract all files from fileList
+        const allFiles: File[] = [];
+        info.fileList.forEach((fileItem: UploadFile) => {
+          // Try to get the File object
+          let file = fileItem.originFileObj;
+          if (!file) {
+            file = (fileItem as any).file;
+          }
+          if (!file && (fileItem as any).response) {
+            file = (fileItem as any).response.file;
+          }
+          
+          if (file instanceof File) {
+            const key = `${file.name}-${file.size}`;
+            if (!processedFilesRef.current.has(key)) {
+              allFiles.push(file);
+              processedFilesRef.current.add(key);
+              console.log('Extracted file from fileList:', file.name);
+            }
+          } else {
+            console.warn('Could not extract File for:', fileItem.name, {
+              hasOriginFileObj: !!fileItem.originFileObj,
+              fileItemKeys: Object.keys(fileItem)
+            });
+          }
+        });
+        
+        if (allFiles.length > 0) {
+          console.log('=== PROCESSING FILES FROM onChange ===');
+          console.log('Total files to process:', allFiles.length);
+          console.log('File names:', allFiles.map(f => f.name));
+          handleFileUpload(allFiles);
+        } else {
+          console.log('No new files to process');
+        }
+      }, 200); // Delay to collect all files
     },
     showUploadList: false,
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup handled by component
+    };
+  }, []);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -137,7 +233,10 @@ const DicomUploader = () => {
                 danger
                 size="small"
                 icon={<DeleteOutlined />}
-                onClick={handleClearFiles}
+                onClick={() => {
+                  processedFilesRef.current.clear();
+                  handleClearFiles();
+                }}
               >
                 Clear All
               </Button>

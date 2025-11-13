@@ -18,6 +18,7 @@ import {
   nextSlice,
   previousSlice,
 } from '@store/slices/viewerSlice';
+import { setCurrentFileIndex } from '@store/slices/dicomSlice';
 
 export interface ShortcutConfig {
   key: string;
@@ -31,7 +32,7 @@ export interface ShortcutConfig {
 
 export const useKeyboardShortcuts = () => {
   const dispatch = useAppDispatch();
-  const { originalFiles, deidentifiedFiles, isProcessing } = useAppSelector((state) => state.dicom);
+  const { originalFiles, deidentifiedFiles, isProcessing, currentFileIndex } = useAppSelector((state) => state.dicom);
   const { sync } = useAppSelector((state) => state.viewer);
 
   const hasFiles = originalFiles.length > 0;
@@ -122,6 +123,28 @@ export const useKeyboardShortcuts = () => {
       description: 'Next slice',
       category: 'navigation',
     },
+    {
+      key: 'ArrowLeft',
+      action: () => {
+        if (hasFiles && originalFiles.length > 1) {
+          const prevIndex = currentFileIndex > 0 ? currentFileIndex - 1 : originalFiles.length - 1;
+          dispatch(setCurrentFileIndex(prevIndex));
+        }
+      },
+      description: 'Previous file',
+      category: 'navigation',
+    },
+    {
+      key: 'ArrowRight',
+      action: () => {
+        if (hasFiles && originalFiles.length > 1) {
+          const nextIndex = currentFileIndex < originalFiles.length - 1 ? currentFileIndex + 1 : 0;
+          dispatch(setCurrentFileIndex(nextIndex));
+        }
+      },
+      description: 'Next file',
+      category: 'navigation',
+    },
 
     // Help
     {
@@ -148,6 +171,22 @@ export const useKeyboardShortcuts = () => {
         return;
       }
 
+      // Handle arrow keys for file navigation directly
+      if (event.key === 'ArrowLeft' && hasFiles && originalFiles.length > 1) {
+        event.preventDefault();
+        const prevIndex = currentFileIndex > 0 ? currentFileIndex - 1 : originalFiles.length - 1;
+        dispatch(setCurrentFileIndex(prevIndex));
+        return;
+      }
+
+      if (event.key === 'ArrowRight' && hasFiles && originalFiles.length > 1) {
+        event.preventDefault();
+        const nextIndex = currentFileIndex < originalFiles.length - 1 ? currentFileIndex + 1 : 0;
+        dispatch(setCurrentFileIndex(nextIndex));
+        return;
+      }
+
+      // Handle other shortcuts
       for (const shortcut of shortcuts) {
         const keyMatch = event.key === shortcut.key;
         const ctrlMatch = shortcut.ctrl ? event.ctrlKey || event.metaKey : !event.ctrlKey && !event.metaKey;
@@ -167,8 +206,7 @@ export const useKeyboardShortcuts = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasFiles, hasDeidentified, isProcessing, sync.isEnabled]);
+  }, [dispatch, hasFiles, hasDeidentified, isProcessing, sync.isEnabled, originalFiles.length, currentFileIndex, originalFiles]);
 
   return shortcuts;
 };

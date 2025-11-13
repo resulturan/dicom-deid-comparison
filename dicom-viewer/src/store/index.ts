@@ -16,8 +16,21 @@ export const store = configureStore({
       serializableCheck: {
         // Ignore these paths in the state for serializability checks
         // (File and ArrayBuffer objects are not serializable)
-        ignoredActions: ['dicom/addFiles', 'dicom/updateFileMetadata'],
-        ignoredPaths: ['dicom.originalFiles', 'dicom.deidentifiedFiles'],
+        ignoredActions: [
+          'dicom/addFiles',
+          'dicom/updateFileMetadata',
+          'dicom/processDicomFile/fulfilled',
+          'dicom/processDicomFile/pending',
+          'dicom/processDicomFile/rejected',
+        ],
+        ignoredPaths: [
+          'dicom.originalFiles',
+          'dicom.deidentifiedFiles',
+          'dicom.originalFiles.*.file',
+          'dicom.originalFiles.*.imageData',
+          'dicom.deidentifiedFiles.*.file',
+          'dicom.deidentifiedFiles.*.imageData',
+        ],
       },
     }),
 });

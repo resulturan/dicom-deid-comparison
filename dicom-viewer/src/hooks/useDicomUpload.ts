@@ -20,13 +20,14 @@ export function useDicomUpload() {
   const { originalFiles, currentFileIndex, isProcessing } = useAppSelector(
     (state) => state.dicom
   );
-  const previousFilesCount = useRef(0);
+  const processedFileIds = useRef<Set<string>>(new Set());
 
   /**
    * Handle file upload
    */
   const handleFileUpload = useCallback(
     (files: File[]) => {
+      console.log('handleFileUpload called with', files.length, 'files');
       // Add files to store - this will add them with generated IDs
       dispatch(addFiles(files));
       // The processing will happen in the useEffect below
@@ -38,22 +39,32 @@ export function useDicomUpload() {
    * Process newly added files automatically
    */
   useEffect(() => {
-    const currentCount = originalFiles.length;
-    
-    // If new files were added (count increased)
-    if (currentCount > previousFilesCount.current) {
-      const newFilesCount = currentCount - previousFilesCount.current;
-      const newFiles = originalFiles.slice(-newFilesCount);
-      
-      // Process each newly added file that's in pending status
-      newFiles.forEach((dicomFile) => {
-        if (dicomFile.status === 'pending') {
-          dispatch(processDicomFile({ id: dicomFile.id, file: dicomFile.file }));
-        }
+    // Find all files that are pending and haven't been processed yet
+    const pendingFiles = originalFiles.filter(
+      (file) => file.status === 'pending' && !processedFileIds.current.has(file.id)
+    );
+
+    if (pendingFiles.length > 0) {
+      console.log('Found', pendingFiles.length, 'pending files to process:', 
+        pendingFiles.map(f => ({ id: f.id, fileName: f.fileName }))
+      );
+
+      // Process each pending file
+      pendingFiles.forEach((dicomFile) => {
+        // Mark as being processed
+        processedFileIds.current.add(dicomFile.id);
+        console.log('Processing file:', dicomFile.fileName, dicomFile.id);
+        dispatch(processDicomFile({ id: dicomFile.id, file: dicomFile.file }));
       });
     }
-    
-    previousFilesCount.current = currentCount;
+
+    // Clean up processed IDs for files that no longer exist
+    const currentFileIds = new Set(originalFiles.map(f => f.id));
+    processedFileIds.current.forEach(id => {
+      if (!currentFileIds.has(id)) {
+        processedFileIds.current.delete(id);
+      }
+    });
   }, [originalFiles, dispatch]);
 
   /**
