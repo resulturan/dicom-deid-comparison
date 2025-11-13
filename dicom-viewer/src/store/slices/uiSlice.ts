@@ -6,6 +6,7 @@ const initialState: UIState = {
   uploadDrawerOpen: false,
   metadataDrawerOpen: false,
   settingsDrawerOpen: false,
+  exportDrawerOpen: false,
   loading: false,
   loadingMessage: '',
   errors: [],
@@ -45,6 +46,16 @@ const uiSlice = createSlice({
     },
     toggleSettingsDrawer: (state) => {
       state.settingsDrawerOpen = !state.settingsDrawerOpen;
+    },
+
+    openExportDrawer: (state) => {
+      state.exportDrawerOpen = true;
+    },
+    closeExportDrawer: (state) => {
+      state.exportDrawerOpen = false;
+    },
+    toggleExportDrawer: (state) => {
+      state.exportDrawerOpen = !state.exportDrawerOpen;
     },
 
     // Loading State
@@ -91,6 +102,9 @@ export const {
   openSettingsDrawer,
   closeSettingsDrawer,
   toggleSettingsDrawer,
+  openExportDrawer,
+  closeExportDrawer,
+  toggleExportDrawer,
   setLoading,
   addError,
   removeError,

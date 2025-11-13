@@ -5,6 +5,7 @@ import NotificationHandler from '@components/Layout/NotificationHandler';
 import LoadingOverlay from '@components/Layout/LoadingOverlay';
 import DeidentificationSettings from '@components/Controls/DeidentificationSettings';
 import MetadataDrawer from '@components/Metadata/MetadataDrawer';
+import ExportDrawer from '@components/Export/ExportDrawer';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <DicomUploader />
       <DeidentificationSettings />
       <MetadataDrawer />
+      <ExportDrawer />
       <NotificationHandler />
       <LoadingOverlay />
     </MainLayout>

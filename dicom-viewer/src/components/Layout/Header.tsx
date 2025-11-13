@@ -5,9 +5,10 @@ import {
   InfoCircleOutlined,
   FileTextOutlined,
   SafetyOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '@store';
-import { toggleUploadDrawer, toggleMetadataDrawer, toggleSettingsDrawer } from '@store/slices/uiSlice';
+import { toggleUploadDrawer, toggleMetadataDrawer, toggleSettingsDrawer, toggleExportDrawer } from '@store/slices/uiSlice';
 import { deidentifyAllFiles } from '@store/slices/dicomThunks';
 
 const { Header: AntHeader } = Layout;
@@ -59,6 +60,13 @@ const Header = () => {
           danger={!hasDeidentified}
         >
           {hasDeidentified ? 'Re-Deidentify' : 'Deidentify'}
+        </Button>
+        <Button
+          icon={<DownloadOutlined />}
+          onClick={() => dispatch(toggleExportDrawer())}
+          disabled={!hasDeidentified}
+        >
+          Export
         </Button>
         <Button
           icon={<FileTextOutlined />}

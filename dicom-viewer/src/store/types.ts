@@ -122,6 +122,7 @@ export interface UIState {
   uploadDrawerOpen: boolean;
   metadataDrawerOpen: boolean;
   settingsDrawerOpen: boolean;
+  exportDrawerOpen: boolean;
   loading: boolean;
   loadingMessage: string;
   errors: string[];
