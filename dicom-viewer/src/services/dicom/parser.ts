@@ -95,11 +95,66 @@ export function extractMetadataFromDicomParser(dataSet: any): DicomMetadata {
     referringPhysicianName: getStringFromTag('x00080090'),
     performingPhysicianName: getStringFromTag('x00081050'),
 
-    // Store all tags for comparison
-    allTags: dataSet,
+    // Store all tags for comparison - only serializable data
+    allTags: extractSerializableTags(dataSet),
   };
 
   return metadata;
+}
+
+/**
+ * Extract serializable tag data from DICOM dataset
+ */
+function extractSerializableTags(dataSet: any): Record<string, any> {
+  const tags: Record<string, any> = {};
+  
+  try {
+    // Iterate through all elements and extract their values
+    for (const tag in dataSet.elements) {
+      if (!dataSet.elements.hasOwnProperty(tag)) continue;
+      
+      const element = dataSet.elements[tag];
+      if (!element) continue;
+      
+      try {
+        // Try to get string value
+        const stringValue = dataSet.string(tag);
+        if (stringValue !== undefined) {
+          tags[tag] = stringValue;
+          continue;
+        }
+      } catch {}
+      
+      try {
+        // Try to get number value
+        const uint16Value = dataSet.uint16(tag);
+        if (uint16Value !== undefined) {
+          tags[tag] = uint16Value;
+          continue;
+        }
+      } catch {}
+      
+      try {
+        // Try to get float value
+        const floatValue = dataSet.floatString(tag);
+        if (floatValue !== undefined) {
+          tags[tag] = parseFloat(floatValue);
+          continue;
+        }
+      } catch {}
+      
+      // If we can't extract a value, store the element info (without functions)
+      tags[tag] = {
+        length: element.length,
+        dataOffset: element.dataOffset,
+        vr: element.vr,
+      };
+    }
+  } catch (error) {
+    console.warn('Error extracting serializable tags:', error);
+  }
+  
+  return tags;
 }
 
 /**

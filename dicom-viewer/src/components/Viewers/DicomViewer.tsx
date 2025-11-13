@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Spin, Alert } from 'antd';
+import * as dicomParser from 'dicom-parser';
 import type { DicomFile } from '@store/types';
 import { useAppDispatch, useAppSelector } from '@store';
 import { updateLeftViewport, updateRightViewport, setLeftActiveTool, setRightActiveTool } from '@store/slices/viewerSlice';
@@ -45,6 +46,200 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
     [dispatch, viewerId]
   );
 
+  // Render DICOM image to canvas
+  const renderDicomImage = useCallback(async () => {
+    if (!file || !file.imageData || !file.metadata || !canvasRef.current || file.status !== 'complete') {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Parse DICOM data
+      const byteArray = new Uint8Array(file.imageData);
+      const dataSet = dicomParser.parseDicom(byteArray);
+
+      // Get image dimensions
+      const rows = file.metadata.rows || dataSet.uint16('x00280010') || 512;
+      const columns = file.metadata.columns || dataSet.uint16('x00280011') || 512;
+      const bitsAllocated = dataSet.uint16('x00280100') || 16;
+      const bitsStored = dataSet.uint16('x00280101') || bitsAllocated;
+      const highBit = dataSet.uint16('x00280102') || bitsStored - 1;
+      const pixelRepresentation = dataSet.uint16('x00280103') || 0; // 0 = unsigned, 1 = signed
+      const samplesPerPixel = dataSet.uint16('x00280002') || 1;
+      const photometricInterpretation = dataSet.string('x00280004') || 'MONOCHROME2';
+      const rescaleIntercept = dataSet.floatString('x00281052') || 0;
+      const rescaleSlope = dataSet.floatString('x00281053') || 1;
+
+      // Get window/level from viewport or DICOM tags
+      const windowCenter = viewport.windowCenter ?? dataSet.floatString('x00281050') ?? 0;
+      const windowWidth = viewport.windowWidth ?? dataSet.floatString('x00281051') ?? 0;
+
+      // Get pixel data
+      const pixelDataElement = dataSet.elements['x7fe00010'];
+      if (!pixelDataElement) {
+        console.warn('No pixel data found in DICOM file');
+        return;
+      }
+
+      // Extract pixel data - use dicom-parser's built-in method
+      // Note: pixelDataElement.length might be undefined for encapsulated data
+      const expectedLength = rows * columns * samplesPerPixel * (bitsAllocated / 8);
+      const actualLength = pixelDataElement.length || expectedLength;
+      
+      const pixelData = dataSet.byteArray.subarray(
+        pixelDataElement.dataOffset,
+        pixelDataElement.dataOffset + Math.min(actualLength, dataSet.byteArray.length - pixelDataElement.dataOffset)
+      );
+      
+      console.log('DICOM rendering info:', {
+        rows,
+        columns,
+        bitsAllocated,
+        samplesPerPixel,
+        pixelDataLength: pixelData.length,
+        expectedLength,
+        actualLength: pixelDataElement.length,
+      });
+
+      // Set canvas size
+      canvas.width = columns;
+      canvas.height = rows;
+
+      // Create ImageData
+      const imageData = ctx.createImageData(columns, rows);
+      const data = imageData.data;
+      const totalPixels = rows * columns;
+
+      // Convert pixel data based on bits allocated
+      if (bitsAllocated === 8) {
+        // 8-bit grayscale
+        for (let pixelIndex = 0; pixelIndex < totalPixels; pixelIndex++) {
+          const byteIndex = pixelIndex * samplesPerPixel;
+          if (byteIndex >= pixelData.length) break;
+          
+          let pixelValue = pixelData[byteIndex];
+          
+          // Apply rescale slope/intercept
+          pixelValue = pixelValue * rescaleSlope + rescaleIntercept;
+          
+          // Apply window/level if available
+          if (windowWidth > 0) {
+            const min = windowCenter - windowWidth / 2;
+            const max = windowCenter + windowWidth / 2;
+            pixelValue = Math.max(min, Math.min(max, pixelValue));
+            pixelValue = ((pixelValue - min) / (max - min)) * 255;
+          } else {
+            // Clamp to 0-255
+            pixelValue = Math.max(0, Math.min(255, pixelValue));
+          }
+          
+          const gray = Math.round(pixelValue);
+          const idx = pixelIndex * 4;
+          data[idx] = gray;     // R
+          data[idx + 1] = gray; // G
+          data[idx + 2] = gray; // B
+          data[idx + 3] = 255;  // A
+        }
+      } else if (bitsAllocated === 16) {
+        // 16-bit grayscale - need to handle byte order
+        const isLittleEndian = dataSet.littleEndian;
+        const bytesPerPixel = 2;
+        
+        // Calculate min/max for normalization if no window/level
+        let minValue = Infinity;
+        let maxValue = -Infinity;
+        if (windowWidth <= 0) {
+          // First pass: find min/max
+          for (let pixelIndex = 0; pixelIndex < totalPixels; pixelIndex++) {
+            const byteIndex = pixelIndex * samplesPerPixel * bytesPerPixel;
+            if (byteIndex + 1 >= pixelData.length) break;
+            
+            let pixelValue;
+            if (isLittleEndian) {
+              pixelValue = pixelData[byteIndex] | (pixelData[byteIndex + 1] << 8);
+            } else {
+              pixelValue = (pixelData[byteIndex] << 8) | pixelData[byteIndex + 1];
+            }
+            
+            // Handle signed/unsigned
+            if (pixelRepresentation === 1 && pixelValue > 32767) {
+              pixelValue = pixelValue - 65536;
+            }
+            
+            pixelValue = pixelValue * rescaleSlope + rescaleIntercept;
+            minValue = Math.min(minValue, pixelValue);
+            maxValue = Math.max(maxValue, pixelValue);
+          }
+        }
+        
+        // Second pass: render pixels
+        for (let pixelIndex = 0; pixelIndex < totalPixels; pixelIndex++) {
+          const byteIndex = pixelIndex * samplesPerPixel * bytesPerPixel;
+          if (byteIndex + 1 >= pixelData.length) break;
+          
+          let pixelValue;
+          if (isLittleEndian) {
+            pixelValue = pixelData[byteIndex] | (pixelData[byteIndex + 1] << 8);
+          } else {
+            pixelValue = (pixelData[byteIndex] << 8) | pixelData[byteIndex + 1];
+          }
+          
+          // Handle signed/unsigned
+          if (pixelRepresentation === 1 && pixelValue > 32767) {
+            pixelValue = pixelValue - 65536;
+          }
+          
+          // Apply rescale slope/intercept
+          pixelValue = pixelValue * rescaleSlope + rescaleIntercept;
+          
+          // Apply window/level if available
+          if (windowWidth > 0) {
+            const min = windowCenter - windowWidth / 2;
+            const max = windowCenter + windowWidth / 2;
+            pixelValue = Math.max(min, Math.min(max, pixelValue));
+            pixelValue = ((pixelValue - min) / (max - min)) * 255;
+          } else {
+            // Normalize using calculated min/max
+            if (maxValue > minValue) {
+              pixelValue = ((pixelValue - minValue) / (maxValue - minValue)) * 255;
+            } else {
+              pixelValue = 128; // Default gray if no range
+            }
+          }
+          
+          const gray = Math.max(0, Math.min(255, Math.round(pixelValue)));
+          const idx = pixelIndex * 4;
+          data[idx] = gray;     // R
+          data[idx + 1] = gray; // G
+          data[idx + 2] = gray; // B
+          data[idx + 3] = 255;  // A
+        }
+      }
+
+      // Handle photometric interpretation
+      if (photometricInterpretation === 'MONOCHROME1') {
+        // Invert grayscale
+        for (let i = 0; i < data.length; i += 4) {
+          data[i] = 255 - data[i];
+          data[i + 1] = 255 - data[i + 1];
+          data[i + 2] = 255 - data[i + 2];
+        }
+      }
+
+      // Draw to canvas
+      ctx.putImageData(imageData, 0, 0);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error rendering DICOM image:', error);
+      setLoading(false);
+      _setError(error instanceof Error ? error.message : 'Failed to render image');
+    }
+  }, [file, viewport.windowCenter, viewport.windowWidth]);
+
   useEffect(() => {
     if (!file || !viewerRef.current) {
       return;
@@ -53,13 +248,13 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
     // Show loading if file is being processed
     if (file.status === 'processing' || file.status === 'uploading') {
       setLoading(true);
+    } else if (file.status === 'complete' && file.imageData) {
+      // Render the image when file is complete or window/level changes
+      renderDicomImage();
     } else {
       setLoading(false);
     }
-
-    // For Phase 5, we'll display a placeholder with viewport transformations
-    // Full Cornerstone integration will be implemented in later phase
-  }, [file]);
+  }, [file, renderDicomImage, viewport.windowCenter, viewport.windowWidth]);
 
   // Mouse wheel for zoom
   const handleWheel = useCallback(
@@ -225,26 +420,26 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
         }}
       >
         {file.status === 'complete' && file.imageData ? (
-          /* Placeholder with viewport transformations */
+          /* DICOM Image Canvas */
           <div
             style={{
-              textAlign: 'center',
-              color: '#999',
               transform: `translate(${viewport.translation.x}px, ${viewport.translation.y}px) scale(${viewport.scale}) rotate(${viewport.rotation}deg)`,
               transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%',
+              height: '100%',
             }}
           >
-            <div style={{ fontSize: 64, marginBottom: 16 }}>🏥</div>
-            <div style={{ fontSize: 18, marginBottom: 8 }}>DICOM Viewer Canvas</div>
-            <div style={{ fontSize: 14, color: '#666' }}>
-              {file.fileName}
-            </div>
-            {file.metadata && (
-              <div style={{ fontSize: 12, color: '#555', marginTop: 8 }}>
-                {file.metadata.columns} × {file.metadata.rows} pixels
-              </div>
-            )}
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
+            <canvas
+              ref={canvasRef}
+              style={{
+                display: 'block',
+                imageRendering: 'auto',
+                objectFit: 'contain',
+              }}
+            />
           </div>
         ) : file.status === 'error' ? (
           <div style={{ textAlign: 'center', color: '#ff4d4f' }}>

@@ -39,20 +39,15 @@ export function useDicomUpload() {
    */
   useEffect(() => {
     const currentCount = originalFiles.length;
-    console.log('useDicomUpload: Files count:', currentCount, 'Previous:', previousFilesCount.current);
-    console.log('useDicomUpload: All files:', originalFiles);
     
     // If new files were added (count increased)
     if (currentCount > previousFilesCount.current) {
       const newFilesCount = currentCount - previousFilesCount.current;
       const newFiles = originalFiles.slice(-newFilesCount);
-      console.log('useDicomUpload: New files to process:', newFiles);
       
       // Process each newly added file that's in pending status
       newFiles.forEach((dicomFile) => {
-        console.log('useDicomUpload: Checking file:', dicomFile.fileName, 'Status:', dicomFile.status);
         if (dicomFile.status === 'pending') {
-          console.log('useDicomUpload: Dispatching processDicomFile for:', dicomFile.id);
           dispatch(processDicomFile({ id: dicomFile.id, file: dicomFile.file }));
         }
       });
