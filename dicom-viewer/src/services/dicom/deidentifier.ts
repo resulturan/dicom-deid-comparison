@@ -6,6 +6,9 @@
 import type { DicomMetadata, DeidentifyOptions } from '@store/types';
 import { ANONYMOUS_PATIENT_NAME, ANONYMOUS_PATIENT_ID_PREFIX } from '@utils/constants';
 
+// Session-based UID mapping for consistency
+const uidMappingCache = new Map<string, string>();
+
 /**
  * Generate anonymous patient ID
  */
@@ -16,20 +19,38 @@ export function generateAnonymousID(): string {
 }
 
 /**
- * Generate anonymous UID
- * Maintains the UID format but creates a new unique identifier
+ * Generate anonymous UID with session consistency
+ * Same original UID will always map to the same anonymous UID within a session
  */
 export function generateAnonymousUID(originalUID?: string): string {
   if (!originalUID) {
     return `2.25.${Date.now()}${Math.floor(Math.random() * 1000000)}`;
   }
 
-  // Use a hash-like approach to maintain consistency within the same session
+  // Check if we've already anonymized this UID in this session
+  if (uidMappingCache.has(originalUID)) {
+    return uidMappingCache.get(originalUID)!;
+  }
+
+  // Create a deterministic hash from the original UID
   const hash = originalUID.split('').reduce((acc, char) => {
     return ((acc << 5) - acc) + char.charCodeAt(0);
   }, 0);
 
-  return `2.25.${Math.abs(hash)}${Date.now()}`;
+  // Generate anonymous UID with hash-based suffix for uniqueness
+  const anonymousUID = `2.25.${Math.abs(hash)}${Math.floor(Math.random() * 100000)}`;
+
+  // Cache the mapping for consistency
+  uidMappingCache.set(originalUID, anonymousUID);
+
+  return anonymousUID;
+}
+
+/**
+ * Clear UID mapping cache (useful when starting a new deidentification session)
+ */
+export function clearUIDCache(): void {
+  uidMappingCache.clear();
 }
 
 /**

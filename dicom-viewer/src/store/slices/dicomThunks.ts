@@ -6,7 +6,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import type { DicomFile } from '../types';
 import { parseDicomFile } from '@services/dicom/parser';
 import { validateFile } from '@services/dicom/validator';
-import { deidentifyMetadata } from '@services/dicom/deidentifier';
+import { deidentifyMetadata, clearUIDCache, validateDeidentificationOptions } from '@services/dicom/deidentifier';
 import { updateFileStatus, updateFileMetadata, setDeidentifiedFiles, setProcessing } from './dicomSlice';
 import { addNotification, setLoading } from './uiSlice';
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '@utils/constants';
@@ -149,6 +149,22 @@ export const deidentifyAllFiles = createAsyncThunk(
         );
         return;
       }
+
+      // Validate deidentification options
+      const validation = validateDeidentificationOptions(deidentificationOptions);
+      if (!validation.valid) {
+        dispatch(
+          addNotification({
+            type: 'error',
+            message: 'Invalid deidentification options',
+            description: validation.errors.join(', '),
+          })
+        );
+        return;
+      }
+
+      // Clear UID cache to ensure fresh mappings for this deidentification run
+      clearUIDCache();
 
       // Set processing state
       dispatch(setProcessing(true));
