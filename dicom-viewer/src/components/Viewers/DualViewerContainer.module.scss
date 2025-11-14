@@ -1,0 +1,242 @@
+@use '../../styles/variables.scss' as *;
+
+.container {
+  height: calc(100vh - 64px);
+  padding: $spacing-md;
+  background: linear-gradient(135deg, $purple-very-light 0%, $purple-light 100%);
+}
+
+.row {
+  height: 100%;
+}
+
+.col {
+  height: 100%;
+}
+
+.card {
+  height: 100%;
+  background: $bg-card;
+
+  :global(.ant-card-body) {
+    height: calc(100% - 57px);
+    display: flex;
+    flex-direction: column;
+    background: $bg-viewer;
+    padding: 0;
+    position: relative;
+  }
+
+  :global(.ant-card-head) {
+    .title {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+    }
+  }
+}
+
+.viewerWrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.navigationOverlay {
+  position: absolute;
+  top: $spacing-md;
+  left: $spacing-md;
+  right: $spacing-md;
+  z-index: 10;
+  padding: 12px $spacing-md;
+  background: $bg-overlay;
+  backdrop-filter: blur(10px);
+  border-radius: $border-radius-lg;
+  border: 1px solid rgba($purple-medium, 0.5);
+  box-shadow: 0 4px 12px rgba($purple-medium, 0.3);
+}
+
+.navigationRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.navigationInfo {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.navigationIcon {
+  color: $purple-dark;
+  font-size: $font-size-lg;
+}
+
+.navigationText {
+  color: $text-primary;
+  font-size: 13px;
+  font-weight: $font-weight-semibold;
+}
+
+.navigationButtons {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.navButton {
+  background: linear-gradient(135deg, $purple-medium 0%, $purple-dark 100%);
+  border: none;
+  box-shadow: 0 2px 4px rgba($purple-medium, 0.3);
+  font-weight: $font-weight-semibold;
+  min-width: 70px;
+  transition: all $transition-fast;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba($purple-medium, 0.5);
+  }
+}
+
+.fileCounter {
+  padding: 4px 12px;
+  background: rgba($purple-medium, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba($purple-medium, 0.4);
+  min-width: 60px;
+  text-align: center;
+}
+
+.fileCounterText {
+  color: $purple-dark;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.fileTag {
+  padding: 4px 12px;
+  font-size: 11px;
+}
+
+.fileSelect {
+  width: 100%;
+}
+
+.fileSelectIcon {
+  color: $purple-dark;
+  font-size: $font-size-lg;
+}
+
+.fileNameActive {
+  color: $purple-dark;
+}
+
+.fileNameInactive {
+  color: inherit;
+}
+
+.metadataOverlay {
+  position: absolute;
+  bottom: $spacing-md;
+  left: $spacing-md;
+  right: $spacing-md;
+  z-index: 10;
+}
+
+.metadataCollapse {
+  background: $bg-overlay;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba($purple-medium, 0.5);
+  border-radius: $border-radius-lg;
+  box-shadow: 0 4px 12px rgba($purple-medium, 0.3);
+
+  :global(.ant-collapse-header) {
+    .icon {
+      color: $purple-dark;
+    }
+
+    .label {
+      color: $text-primary;
+      font-weight: $font-weight-semibold;
+    }
+  }
+}
+
+.metadataContent {
+  max-height: 300px;
+  overflow-y: auto;
+  background: $bg-overlay-content;
+  backdrop-filter: blur(10px);
+  border-radius: $border-radius-lg;
+  padding: $spacing-sm;
+
+  :global(.ant-descriptions) {
+    background: transparent;
+
+    :global(.ant-descriptions-item-label) {
+      background: $purple-light;
+      color: $purple-dark;
+      font-weight: $font-weight-medium;
+    }
+
+    :global(.ant-descriptions-item-content) {
+      background: transparent;
+      color: $text-primary;
+    }
+  }
+}
+
+.uidText {
+  font-size: 10px;
+  font-family: monospace;
+  word-break: break-all;
+  color: $purple-medium;
+}
+
+.emptyStateIcon {
+  font-size: 72px;
+  color: $purple-medium;
+}
+
+.emptyStatePadding {
+  padding: 40px $spacing-lg;
+}
+
+.metadataLabelIcon {
+  color: $purple-dark;
+}
+
+.metadataLabelText {
+  color: $text-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.deidentifiedMetadataLabelIcon {
+  color: $success-color;
+}
+
+.deidentifiedMetadataLabelText {
+  color: $text-primary;
+  font-weight: $font-weight-semibold;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.spaceFullWidth {
+  width: 100%;
+}
+
+.fileStatusIcon {
+  // Dynamic color based on status - keep inline
+}
+
+.tagMargin {
+  margin-left: 8px;
+}
+

@@ -1,0 +1,149 @@
+@use '../../styles/variables.scss' as *;
+
+.viewer {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: $bg-viewer;
+}
+
+.emptyState {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: $bg-viewer;
+}
+
+.emptyStateContent {
+  text-align: center;
+  color: $purple-medium;
+}
+
+.emptyStateIcon {
+  font-size: 48px;
+  margin-bottom: $spacing-md;
+}
+
+.dragging {
+  transition: none !important;
+}
+
+.loadingOverlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+.viewerContainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: crosshair;
+  overflow: hidden;
+
+  &.panMode {
+    cursor: move;
+  }
+
+  &.zoomMode {
+    cursor: zoom-in;
+  }
+}
+
+.canvasWrapper {
+  transform: translate(var(--translate-x, 0px), var(--translate-y, 0px)) 
+             scale(var(--scale, 1)) 
+             rotate(var(--rotation, 0deg));
+  transition: transform 0.1s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+
+  &.dragging {
+    transition: none !important;
+  }
+}
+
+.canvas {
+  display: block;
+  image-rendering: auto;
+  object-fit: contain;
+}
+
+.errorState {
+  text-align: center;
+  color: $error-color;
+}
+
+.errorIcon {
+  font-size: 48px;
+  margin-bottom: $spacing-md;
+}
+
+.errorMessage {
+  font-size: $font-size-lg;
+}
+
+.errorText {
+  font-size: $font-size-sm;
+  color: $purple-medium;
+  margin-top: $spacing-sm;
+}
+
+.processingState {
+  text-align: center;
+  color: $purple-medium;
+}
+
+.processingMessage {
+  font-size: $font-size-base;
+  margin-top: $spacing-md;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.infoOverlay {
+  position: absolute;
+  top: $spacing-sm;
+  left: $spacing-sm;
+  background: $bg-overlay-info;
+  padding: $spacing-sm 12px;
+  border-radius: $border-radius-base;
+  font-size: 11px;
+  color: $text-primary;
+}
+
+.viewportInfo {
+  position: absolute;
+  bottom: $spacing-sm;
+  left: $spacing-sm;
+  background: $bg-overlay-info;
+  padding: 6px 10px;
+  border-radius: $border-radius-base;
+  font-size: 10px;
+  color: $purple-dark;
+}
+
+.controlsWrapper {
+  pointer-events: auto;
+}
+
+.errorContainer {
+  padding: $spacing-lg;
+}
+

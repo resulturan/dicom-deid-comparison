@@ -1,29 +1,41 @@
-// Color Variables
-$primary-color: #1890ff;
+// Color Variables - Purple Theme
+$primary-color: #7c3aed;
+$primary-light: #a67fcd;
+$primary-dark: #6b46c1;
 $success-color: #52c41a;
 $warning-color: #faad14;
 $error-color: #f5222d;
-$info-color: #1890ff;
+$info-color: #7c3aed;
 
 // Status Colors
 $deidentified-color: #52c41a;
 $modified-color: #faad14;
 $removed-color: #f5222d;
-$original-color: #1890ff;
+$original-color: #7c3aed;
+
+// Purple Theme Colors
+$purple-very-light: #f3edf7;
+$purple-light: #e6d9f5;
+$purple-medium: #a67fcd;
+$purple-dark: #7c3aed;
+$purple-darker: #6b46c1;
 
 // Background Colors
 $bg-primary: #ffffff;
-$bg-secondary: #f0f2f5;
+$bg-secondary: #f5f0fa;
 $bg-dark: #141414;
-$bg-viewer: #000000;
-$bg-card: #1a1a1a;
+$bg-viewer: #f3edf7;
+$bg-card: #f5f0fa;
+$bg-overlay: rgba(230, 217, 245, 0.95);
+$bg-overlay-content: rgba(243, 237, 247, 0.98);
+$bg-overlay-info: rgba(230, 217, 245, 0.9);
 
 // Text Colors
-$text-primary: rgba(0, 0, 0, 0.85);
-$text-secondary: rgba(0, 0, 0, 0.65);
-$text-disabled: rgba(0, 0, 0, 0.25);
-$text-light: #ffffff;
-$text-muted: #888888;
+$text-primary: #6b46c1;
+$text-secondary: #a67fcd;
+$text-disabled: rgba(107, 70, 193, 0.25);
+$text-light: #6b46c1;
+$text-muted: #a67fcd;
 
 // Border Colors
 $border-color: #d9d9d9;

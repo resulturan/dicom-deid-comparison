@@ -10,6 +10,7 @@ import type { DicomFile } from '@store/types';
 import { useAppDispatch, useAppSelector } from '@store';
 import { updateLeftViewport, updateRightViewport, setLeftActiveTool, setRightActiveTool } from '@store/slices/viewerSlice';
 import ViewerControls from '@components/Controls/ViewerControls';
+import styles from './DicomViewer.module.scss';
 
 interface DicomViewerProps {
   file: DicomFile | null;
@@ -365,18 +366,9 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
 
   if (!file) {
     return (
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#0a0a0a',
-        }}
-      >
-        <div style={{ textAlign: 'center', color: '#666' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>📁</div>
+      <div className={styles.emptyState}>
+        <div className={styles.emptyStateContent}>
+          <div className={styles.emptyStateIcon}>📁</div>
           <div>No file selected</div>
         </div>
       </div>
@@ -385,7 +377,7 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
 
   if (error) {
     return (
-      <div style={{ padding: 24 }}>
+      <div className={styles.errorContainer}>
         <Alert
           message="Error Loading DICOM"
           description={error}
@@ -396,25 +388,12 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
     );
   }
 
+  const cursorClass = activeTool === 'Pan' ? styles.panMode : activeTool === 'Zoom' ? styles.zoomMode : '';
+
   return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        position: 'relative',
-        background: '#000',
-      }}
-    >
+    <div className={styles.viewer}>
       {loading && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 10,
-          }}
-        >
+        <div className={styles.loadingOverlay}>
           <Spin size="large" tip="Loading DICOM image..." />
         </div>
       )}
@@ -422,85 +401,47 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
       {/* Viewer Canvas */}
       <div
         ref={viewerRef}
-        className="viewer-container"
+        className={`viewer-container ${styles.viewerContainer} ${cursorClass}`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: activeTool === 'Pan' ? 'move' : activeTool === 'Zoom' ? 'zoom-in' : 'crosshair',
-          overflow: 'hidden',
-        }}
       >
         {file.status === 'complete' && file.imageData ? (
           /* DICOM Image Canvas */
           <div
+            className={`${styles.canvasWrapper} ${isDragging ? styles.dragging : ''}`}
             style={{
-              transform: `translate(${viewport.translation.x}px, ${viewport.translation.y}px) scale(${viewport.scale}) rotate(${viewport.rotation}deg)`,
-              transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '100%',
-              height: '100%',
-            }}
+              '--translate-x': `${viewport.translation.x}px`,
+              '--translate-y': `${viewport.translation.y}px`,
+              '--scale': viewport.scale,
+              '--rotation': `${viewport.rotation}deg`,
+            } as React.CSSProperties}
           >
-            <canvas
-              ref={canvasRef}
-              style={{
-                display: 'block',
-                imageRendering: 'auto',
-                objectFit: 'contain',
-              }}
-            />
+            <canvas ref={canvasRef} className={styles.canvas} />
           </div>
         ) : file.status === 'error' ? (
-          <div style={{ textAlign: 'center', color: '#ff4d4f' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
-            <div style={{ fontSize: 16 }}>Error loading DICOM file</div>
+          <div className={styles.errorState}>
+            <div className={styles.errorIcon}>⚠️</div>
+            <div className={styles.errorMessage}>Error loading DICOM file</div>
             {file.error && (
-              <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>
+              <div className={styles.errorText}>
                 {file.error}
               </div>
             )}
           </div>
         ) : (
-          <div style={{ textAlign: 'center', color: '#666' }}>
+          <div className={styles.processingState}>
             <Spin size="large" />
-            <div style={{ fontSize: 14, marginTop: 16 }}>Processing {file.fileName}...</div>
+            <div className={styles.processingMessage}>Processing {file.fileName}...</div>
           </div>
         )}
       </div>
 
       {/* Viewer Overlay - contains tools and info */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          pointerEvents: 'none',
-        }}
-      >
+      <div className={styles.overlay}>
         {/* Top-left info overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 8,
-            left: 8,
-            background: 'rgba(0, 0, 0, 0.7)',
-            padding: '8px 12px',
-            borderRadius: 4,
-            fontSize: 11,
-            color: '#ccc',
-          }}
-        >
+        <div className={styles.infoOverlay}>
           {file.metadata && (
             <div>
               <div>{file.metadata.patientName || 'Unknown Patient'}</div>
@@ -510,18 +451,7 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
         </div>
 
         {/* Bottom-left viewport info */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 8,
-            left: 8,
-            background: 'rgba(0, 0, 0, 0.7)',
-            padding: '6px 10px',
-            borderRadius: 4,
-            fontSize: 10,
-            color: '#999',
-          }}
-        >
+        <div className={styles.viewportInfo}>
           <div>Zoom: {(viewport.scale * 100).toFixed(0)}%</div>
           {viewport.windowWidth && viewport.windowCenter && (
             <div>
@@ -531,7 +461,7 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
         </div>
 
         {/* Viewer Controls */}
-        <div style={{ pointerEvents: 'auto' }}>
+        <div className={styles.controlsWrapper}>
           <ViewerControls
             activeTool={activeTool || 'WindowLevel'}
             onToolChange={handleToolChange}
