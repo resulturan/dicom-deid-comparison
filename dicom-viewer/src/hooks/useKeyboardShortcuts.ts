@@ -17,6 +17,8 @@ import {
   resetViewports,
   nextSlice,
   previousSlice,
+  updateLeftViewport,
+  updateRightViewport,
 } from '@store/slices/viewerSlice';
 import { setCurrentFileIndex } from '@store/slices/dicomSlice';
 
@@ -33,7 +35,7 @@ export interface ShortcutConfig {
 export const useKeyboardShortcuts = () => {
   const dispatch = useAppDispatch();
   const { originalFiles, deidentifiedFiles, isProcessing, currentFileIndex } = useAppSelector((state) => state.dicom);
-  const { sync } = useAppSelector((state) => state.viewer);
+  const { sync, leftViewer } = useAppSelector((state) => state.viewer);
 
   const hasFiles = originalFiles.length > 0;
   const hasDeidentified = deidentifiedFiles.length > 0;
@@ -157,6 +159,49 @@ export const useKeyboardShortcuts = () => {
       description: 'Show keyboard shortcuts',
       category: 'help',
     },
+
+    // Zoom Controls
+    {
+      key: '=',
+      action: () => {
+        if (hasFiles) {
+          const newScale = Math.min(10, leftViewer.viewport.scale + 0.25);
+          dispatch(updateLeftViewport({ scale: newScale }));
+          if (sync.isEnabled && sync.syncZoom) {
+            dispatch(updateRightViewport({ scale: newScale }));
+          }
+        }
+      },
+      description: 'Zoom in',
+      category: 'view',
+    },
+    {
+      key: '-',
+      action: () => {
+        if (hasFiles) {
+          const newScale = Math.max(0.1, leftViewer.viewport.scale - 0.25);
+          dispatch(updateLeftViewport({ scale: newScale }));
+          if (sync.isEnabled && sync.syncZoom) {
+            dispatch(updateRightViewport({ scale: newScale }));
+          }
+        }
+      },
+      description: 'Zoom out',
+      category: 'view',
+    },
+    {
+      key: '0',
+      action: () => {
+        if (hasFiles) {
+          dispatch(updateLeftViewport({ scale: 1.0 }));
+          if (sync.isEnabled && sync.syncZoom) {
+            dispatch(updateRightViewport({ scale: 1.0 }));
+          }
+        }
+      },
+      description: 'Reset zoom to 100%',
+      category: 'view',
+    },
   ];
 
   useEffect(() => {
@@ -206,7 +251,7 @@ export const useKeyboardShortcuts = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [dispatch, hasFiles, hasDeidentified, isProcessing, sync.isEnabled, originalFiles.length, currentFileIndex, originalFiles]);
+  }, [dispatch, hasFiles, hasDeidentified, isProcessing, sync.isEnabled, sync.syncZoom, originalFiles.length, currentFileIndex, originalFiles, leftViewer.viewport.scale, shortcuts]);
 
   return shortcuts;
 };
