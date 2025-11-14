@@ -66,19 +66,19 @@ const ViewerControls = ({
     <div
       style={{
         position: 'absolute',
-        bottom: 16,
+        top: 16,
         left: '50%',
         transform: 'translateX(-50%)',
-        background: 'rgba(0, 0, 0, 0.9)',
+        background: 'rgba(124, 58, 237, 0.9)',
         padding: '10px 20px',
         borderRadius: '12px',
         zIndex: 100,
         backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)',
+        border: '1px solid rgba(166, 127, 205, 0.5)',
+        boxShadow: '0 4px 16px rgba(124, 58, 237, 0.3)',
       }}
     >
-      <Space split={<Divider type="vertical" style={{ background: '#555', margin: '0 8px' }} />} size="middle">
+      <Space split={<Divider type="vertical" style={{ background: 'rgba(166, 127, 205, 0.5)', margin: '0 8px' }} />} size="middle">
         {/* Tools */}
         <Space size="small">
           {tools.map((tool) => (
@@ -89,9 +89,9 @@ const ViewerControls = ({
                 size="small"
                 onClick={() => handleToolClick(tool.name)}
                 style={{
-                  background: activeTool === tool.name ? undefined : 'rgba(255, 255, 255, 0.1)',
-                  borderColor: activeTool === tool.name ? undefined : '#555',
-                  color: activeTool === tool.name ? undefined : '#ddd',
+                  background: activeTool === tool.name ? undefined : 'rgba(255, 255, 255, 0.15)',
+                  borderColor: activeTool === tool.name ? undefined : 'rgba(166, 127, 205, 0.5)',
+                  color: activeTool === tool.name ? undefined : '#f3edf7',
                 }}
               />
             </Tooltip>
@@ -107,9 +107,9 @@ const ViewerControls = ({
               onClick={handleZoomOut}
               disabled={currentZoom <= 0.1}
               style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderColor: '#555',
-                color: '#ddd',
+                background: 'rgba(255, 255, 255, 0.15)',
+                borderColor: 'rgba(166, 127, 205, 0.5)',
+                color: '#f3edf7',
               }}
             />
           </Tooltip>
@@ -118,9 +118,9 @@ const ViewerControls = ({
             <Button
               size="small"
               style={{
-                background: 'rgba(64, 150, 255, 0.15)',
-                borderColor: '#4096ff',
-                color: '#4096ff',
+                background: 'rgba(255, 255, 255, 0.2)',
+                borderColor: 'rgba(166, 127, 205, 0.6)',
+                color: '#ffffff',
                 fontWeight: 600,
                 minWidth: 60,
               }}
@@ -136,9 +136,9 @@ const ViewerControls = ({
               onClick={handleZoomIn}
               disabled={currentZoom >= 10}
               style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderColor: '#555',
-                color: '#ddd',
+                background: 'rgba(255, 255, 255, 0.15)',
+                borderColor: 'rgba(166, 127, 205, 0.5)',
+                color: '#f3edf7',
               }}
             />
           </Tooltip>

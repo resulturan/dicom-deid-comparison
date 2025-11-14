@@ -137,12 +137,8 @@ const DualViewerContainer = () => {
                   <DicomViewer file={currentFile} viewerId="left" />
                   {hasMultipleFiles && (
                     <>
-                      <div className={styles.scrollIndicatorLeft}>
-                        <LeftOutlined />
-                      </div>
-                      <div className={styles.scrollIndicatorRight}>
-                        <RightOutlined />
-                      </div>
+                      <div className={styles.scrollIndicatorLeft}></div>
+                      <div className={styles.scrollIndicatorRight}></div>
                     </>
                   )}
 
@@ -379,12 +375,8 @@ const DualViewerContainer = () => {
                   <DicomViewer file={currentDeidentifiedFile} viewerId="right" />
                   {hasMultipleFiles && (
                     <>
-                      <div className={styles.scrollIndicatorLeft}>
-                        <LeftOutlined />
-                      </div>
-                      <div className={styles.scrollIndicatorRight}>
-                        <RightOutlined />
-                      </div>
+                      <div className={styles.scrollIndicatorLeft}></div>
+                      <div className={styles.scrollIndicatorRight}></div>
                     </>
                   )}
 
