@@ -1,4 +1,4 @@
-import { Row, Col, Card, Typography, Space, Tag, Select, Descriptions, Button } from 'antd';
+import { Row, Col, Card, Typography, Space, Tag, Select, Descriptions, Button, Collapse } from 'antd';
 import { EyeOutlined, SafetyOutlined, FileImageOutlined, InboxOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { useEffect, useCallback, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '@store';
@@ -236,43 +236,59 @@ const DualViewerContainer = () => {
                     </div>
                     
                     {/* File Selector Dropdown */}
-                    <Select
-                      style={{ width: '100%' }}
-                      value={currentFileIndex}
-                      onChange={handleSelectFile}
+                      <Select
+                        style={{ width: '100%' }}
+                        value={currentFileIndex}
+                        onChange={handleSelectFile}
                       disabled={!hasMultipleFiles}
                       placeholder="Select a file"
                       size="large"
-                      options={originalFiles.map((file, index) => ({
-                        value: index,
-                        label: (
-                          <Space>
+                        options={originalFiles.map((file, index) => ({
+                          value: index,
+                          label: (
+                            <Space>
                             <FileImageOutlined style={{ color: file.status === 'complete' ? '#52c41a' : '#faad14' }} />
                             <span style={{ color: index === currentFileIndex ? '#4096ff' : 'inherit' }}>
                               {file.fileName}
                             </span>
-                            {file.status === 'complete' && (
-                              <Tag color="success" style={{ marginLeft: 8 }}>Ready</Tag>
-                            )}
+                              {file.status === 'complete' && (
+                                <Tag color="success" style={{ marginLeft: 8 }}>Ready</Tag>
+                              )}
                             {file.status === 'processing' && (
                               <Tag color="processing" style={{ marginLeft: 8 }}>Processing</Tag>
                             )}
-                          </Space>
-                        ),
-                      }))}
-                    />
-                  </Space>
-                </div>
+                            </Space>
+                          ),
+                        }))}
+                      />
+                    </Space>
+                  </div>
 
                 {/* DICOM Viewer */}
                 <div style={{ flex: 1, minHeight: '300px' }}>
                   <DicomViewer file={currentFile} viewerId="left" />
                 </div>
 
-                {/* File Metadata */}
+                {/* File Metadata - Collapsible */}
                 {hasMetadata && currentFile?.metadata && (
-                  <div style={{ marginTop: 16, maxHeight: '200px', overflowY: 'auto' }}>
-                    <Descriptions
+                  <div style={{ marginTop: 16 }}>
+                    <Collapse
+                      ghost
+                      size="small"
+                      items={[
+                        {
+                          key: 'metadata',
+                          label: (
+                            <Space>
+                              <FileImageOutlined style={{ color: '#4096ff' }} />
+                              <Text strong style={{ color: '#fff' }}>
+                                Metadata
+                              </Text>
+                            </Space>
+                          ),
+                          children: (
+                            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                              <Descriptions
                       size="small"
                       column={2}
                       bordered
@@ -280,30 +296,132 @@ const DualViewerContainer = () => {
                       labelStyle={{ background: '#252525', color: '#999', fontWeight: 500 }}
                       contentStyle={{ background: '#1a1a1a', color: '#ccc' }}
                     >
+                                {/* Patient Information */}
                       <Descriptions.Item label="Patient Name" span={2}>
                         {currentFile.metadata?.patientName || 'N/A'}
                       </Descriptions.Item>
                       <Descriptions.Item label="Patient ID">
                         {currentFile.metadata?.patientID || 'N/A'}
                       </Descriptions.Item>
-                      <Descriptions.Item label="Modality">
-                        <Tag color="processing">{currentFile.metadata?.modality || 'N/A'}</Tag>
+                                <Descriptions.Item label="Patient Birth Date">
+                                  {formatDicomDate(currentFile.metadata?.patientBirthDate) || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Patient Sex">
+                                  {currentFile.metadata?.patientSex || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Patient Age">
+                                  {currentFile.metadata?.patientAge || 'N/A'}
                       </Descriptions.Item>
+
+                                {/* Study Information */}
                       <Descriptions.Item label="Study Date">
                         {formatDicomDate(currentFile.metadata?.studyDate)}
                       </Descriptions.Item>
                       <Descriptions.Item label="Study Time">
                         {formatDicomTime(currentFile.metadata?.studyTime)}
                       </Descriptions.Item>
-                      <Descriptions.Item label="Dimensions" span={2}>
+                                <Descriptions.Item label="Study Description" span={2}>
+                                  {currentFile.metadata?.studyDescription || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Accession Number">
+                                  {currentFile.metadata?.accessionNumber || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Study Instance UID" span={2}>
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      fontFamily: 'monospace',
+                                      wordBreak: 'break-all',
+                                      color: '#999',
+                                    }}
+                                  >
+                                    {currentFile.metadata?.studyInstanceUID || 'N/A'}
+                                  </Text>
+                                </Descriptions.Item>
+
+                                {/* Series Information */}
+                                <Descriptions.Item label="Modality">
+                                  <Tag color="processing">{currentFile.metadata?.modality || 'N/A'}</Tag>
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Series Number">
+                                  {currentFile.metadata?.seriesNumber || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Series Description" span={2}>
+                                  {currentFile.metadata?.seriesDescription || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Series Instance UID" span={2}>
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      fontFamily: 'monospace',
+                                      wordBreak: 'break-all',
+                                      color: '#999',
+                                    }}
+                                  >
+                                    {currentFile.metadata?.seriesInstanceUID || 'N/A'}
+                                  </Text>
+                                </Descriptions.Item>
+
+                                {/* Image Information */}
+                                <Descriptions.Item label="Instance Number">
+                                  {currentFile.metadata?.instanceNumber !== undefined
+                                    ? currentFile.metadata.instanceNumber
+                                    : 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Number of Frames">
+                                  {currentFile.metadata?.numberOfFrames || '1'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Dimensions">
                         {currentFile.metadata?.columns && currentFile.metadata?.rows
                           ? `${currentFile.metadata.columns} × ${currentFile.metadata.rows} pixels`
                           : 'N/A'}
                       </Descriptions.Item>
-                      <Descriptions.Item label="Study Description" span={2}>
-                        {currentFile.metadata?.studyDescription || 'N/A'}
+                                <Descriptions.Item label="SOP Instance UID" span={2}>
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      fontFamily: 'monospace',
+                                      wordBreak: 'break-all',
+                                      color: '#999',
+                                    }}
+                                  >
+                                    {currentFile.metadata?.sopInstanceUID || 'N/A'}
+                                  </Text>
+                                </Descriptions.Item>
+
+                                {/* Institution Information */}
+                                {(currentFile.metadata?.institutionName ||
+                                  currentFile.metadata?.referringPhysicianName ||
+                                  currentFile.metadata?.performingPhysicianName) && (
+                                  <>
+                                    {currentFile.metadata?.institutionName && (
+                                      <Descriptions.Item label="Institution Name" span={2}>
+                                        {currentFile.metadata.institutionName}
+                                      </Descriptions.Item>
+                                    )}
+                                    {currentFile.metadata?.referringPhysicianName && (
+                                      <Descriptions.Item label="Referring Physician" span={2}>
+                                        {currentFile.metadata.referringPhysicianName}
+                                      </Descriptions.Item>
+                                    )}
+                                    {currentFile.metadata?.performingPhysicianName && (
+                                      <Descriptions.Item label="Performing Physician" span={2}>
+                                        {currentFile.metadata.performingPhysicianName}
                       </Descriptions.Item>
+                                    )}
+                                  </>
+                                )}
                     </Descriptions>
+                            </div>
+                          ),
+                        },
+                      ]}
+                      style={{
+                        background: '#1a1a1a',
+                        border: '1px solid #333',
+                        borderRadius: 8,
+                      }}
+                    />
                   </div>
                 )}
               </>
@@ -360,10 +478,26 @@ const DualViewerContainer = () => {
                   <DicomViewer file={currentDeidentifiedFile} viewerId="right" />
                 </div>
 
-                {/* Deidentified Metadata */}
+                {/* Deidentified Metadata - Collapsible */}
                 {currentDeidentifiedFile?.metadata && (
-                  <div style={{ marginTop: 16, maxHeight: '200px', overflowY: 'auto' }}>
-                    <Descriptions
+                  <div style={{ marginTop: 16 }}>
+                    <Collapse
+                      ghost
+                      size="small"
+                      items={[
+                        {
+                          key: 'metadata',
+                          label: (
+                            <Space>
+                              <FileImageOutlined style={{ color: '#52c41a' }} />
+                              <Text strong style={{ color: '#fff' }}>
+                                Metadata
+                              </Text>
+                            </Space>
+                          ),
+                          children: (
+                            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                              <Descriptions
                       size="small"
                       column={2}
                       bordered
@@ -371,30 +505,132 @@ const DualViewerContainer = () => {
                       labelStyle={{ background: '#252525', color: '#999', fontWeight: 500 }}
                       contentStyle={{ background: '#1a1a1a', color: '#ccc' }}
                     >
+                                {/* Patient Information */}
                       <Descriptions.Item label="Patient Name" span={2}>
                         <Tag color="success">{currentDeidentifiedFile.metadata?.patientName || 'N/A'}</Tag>
                       </Descriptions.Item>
                       <Descriptions.Item label="Patient ID">
                         <Tag color="success">{currentDeidentifiedFile.metadata?.patientID || 'N/A'}</Tag>
                       </Descriptions.Item>
-                      <Descriptions.Item label="Modality">
-                        <Tag color="processing">{currentDeidentifiedFile.metadata?.modality || 'N/A'}</Tag>
+                                <Descriptions.Item label="Patient Birth Date">
+                                  {formatDicomDate(currentDeidentifiedFile.metadata?.patientBirthDate) || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Patient Sex">
+                                  {currentDeidentifiedFile.metadata?.patientSex || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Patient Age">
+                                  {currentDeidentifiedFile.metadata?.patientAge || 'N/A'}
                       </Descriptions.Item>
+
+                                {/* Study Information */}
                       <Descriptions.Item label="Study Date">
                         {formatDicomDate(currentDeidentifiedFile.metadata?.studyDate)}
                       </Descriptions.Item>
                       <Descriptions.Item label="Study Time">
                         {formatDicomTime(currentDeidentifiedFile.metadata?.studyTime)}
                       </Descriptions.Item>
-                      <Descriptions.Item label="Dimensions" span={2}>
+                                <Descriptions.Item label="Study Description" span={2}>
+                                  {currentDeidentifiedFile.metadata?.studyDescription || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Accession Number">
+                                  {currentDeidentifiedFile.metadata?.accessionNumber || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Study Instance UID" span={2}>
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      fontFamily: 'monospace',
+                                      wordBreak: 'break-all',
+                                      color: '#999',
+                                    }}
+                                  >
+                                    {currentDeidentifiedFile.metadata?.studyInstanceUID || 'N/A'}
+                                  </Text>
+                                </Descriptions.Item>
+
+                                {/* Series Information */}
+                                <Descriptions.Item label="Modality">
+                                  <Tag color="processing">{currentDeidentifiedFile.metadata?.modality || 'N/A'}</Tag>
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Series Number">
+                                  {currentDeidentifiedFile.metadata?.seriesNumber || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Series Description" span={2}>
+                                  {currentDeidentifiedFile.metadata?.seriesDescription || 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Series Instance UID" span={2}>
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      fontFamily: 'monospace',
+                                      wordBreak: 'break-all',
+                                      color: '#999',
+                                    }}
+                                  >
+                                    {currentDeidentifiedFile.metadata?.seriesInstanceUID || 'N/A'}
+                                  </Text>
+                                </Descriptions.Item>
+
+                                {/* Image Information */}
+                                <Descriptions.Item label="Instance Number">
+                                  {currentDeidentifiedFile.metadata?.instanceNumber !== undefined
+                                    ? currentDeidentifiedFile.metadata.instanceNumber
+                                    : 'N/A'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Number of Frames">
+                                  {currentDeidentifiedFile.metadata?.numberOfFrames || '1'}
+                                </Descriptions.Item>
+                                <Descriptions.Item label="Dimensions">
                         {currentDeidentifiedFile.metadata?.columns && currentDeidentifiedFile.metadata?.rows
                           ? `${currentDeidentifiedFile.metadata.columns} × ${currentDeidentifiedFile.metadata.rows} pixels`
                           : 'N/A'}
                       </Descriptions.Item>
-                      <Descriptions.Item label="Study Description" span={2}>
-                        {currentDeidentifiedFile.metadata?.studyDescription || 'N/A'}
+                                <Descriptions.Item label="SOP Instance UID" span={2}>
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      fontFamily: 'monospace',
+                                      wordBreak: 'break-all',
+                                      color: '#999',
+                                    }}
+                                  >
+                                    {currentDeidentifiedFile.metadata?.sopInstanceUID || 'N/A'}
+                                  </Text>
+                                </Descriptions.Item>
+
+                                {/* Institution Information */}
+                                {(currentDeidentifiedFile.metadata?.institutionName ||
+                                  currentDeidentifiedFile.metadata?.referringPhysicianName ||
+                                  currentDeidentifiedFile.metadata?.performingPhysicianName) && (
+                                  <>
+                                    {currentDeidentifiedFile.metadata?.institutionName && (
+                                      <Descriptions.Item label="Institution Name" span={2}>
+                                        {currentDeidentifiedFile.metadata.institutionName}
+                                      </Descriptions.Item>
+                                    )}
+                                    {currentDeidentifiedFile.metadata?.referringPhysicianName && (
+                                      <Descriptions.Item label="Referring Physician" span={2}>
+                                        {currentDeidentifiedFile.metadata.referringPhysicianName}
+                                      </Descriptions.Item>
+                                    )}
+                                    {currentDeidentifiedFile.metadata?.performingPhysicianName && (
+                                      <Descriptions.Item label="Performing Physician" span={2}>
+                                        {currentDeidentifiedFile.metadata.performingPhysicianName}
                       </Descriptions.Item>
+                                    )}
+                                  </>
+                                )}
                     </Descriptions>
+                            </div>
+                          ),
+                        },
+                      ]}
+                      style={{
+                        background: '#1a1a1a',
+                        border: '1px solid #333',
+                        borderRadius: 8,
+                      }}
+                    />
                   </div>
                 )}
               </>
