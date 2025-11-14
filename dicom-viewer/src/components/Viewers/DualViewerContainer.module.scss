@@ -40,61 +40,9 @@
   width: 100%;
   height: 100%;
   position: relative;
-  
-  // Scroll gradient indicators on sides
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 60px;
-    pointer-events: none;
-    z-index: 5;
-    transition: opacity 0.3s ease;
-  }
-
-  &::before {
-    left: 0;
-    background: linear-gradient(
-      to right,
-      rgba($purple-medium, 0.4) 0%,
-      rgba($purple-medium, 0.2) 30%,
-      transparent 100%
-    );
-  }
-
-  &::after {
-    right: 0;
-    background: linear-gradient(
-      to left,
-      rgba($purple-medium, 0.4) 0%,
-      rgba($purple-medium, 0.2) 30%,
-      transparent 100%
-    );
-  }
 }
 
-.navigationOverlay {
-  position: absolute;
-  top: $spacing-md;
-  left: $spacing-md;
-  right: $spacing-md;
-  z-index: 10;
-  padding: 12px $spacing-md;
-  background: $bg-overlay;
-  backdrop-filter: blur(10px);
-  border-radius: $border-radius-lg;
-  border: 1px solid rgba($purple-medium, 0.5);
-  box-shadow: 0 4px 12px rgba($purple-medium, 0.3);
-}
-
-.navigationRow {
-  display: flex;
-  align-items: center;
-  gap: $spacing-sm;
-  width: 100%;
-}
+// Navigation overlay removed - controls moved to card title
 
 .navigationInfo {
   display: flex;
@@ -154,8 +102,8 @@
 }
 
 .fileSelect {
-  flex: 1;
-  min-width: 0;
+  min-width: 200px;
+  max-width: 300px;
 }
 
 .fileSelectIcon {
@@ -177,6 +125,8 @@
   left: $spacing-md;
   right: $spacing-md;
   z-index: 10;
+  // Ensure scrollbar doesn't overlap - add margin for scrollbar width
+  margin-right: 24px;
 }
 
 .metadataCollapse {
@@ -265,7 +215,25 @@
 .cardTitle {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: $spacing-md;
+  width: 100%;
+}
+
+.titleLeft {
+  display: flex;
+  align-items: center;
   gap: $spacing-sm;
+}
+
+.titleRight {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  flex: 1;
+  justify-content: flex-end;
+  margin-left: $spacing-md;
+  min-width: 0; // Allow shrinking if needed
 }
 
 .spaceFullWidth {
@@ -278,86 +246,57 @@
   margin-left: 8px;
 }
 
-// Browser-like scroll indicators
-.scrollIndicatorLeft,
-.scrollIndicatorRight {
+// Native scrollbar on right side
+.nativeScrollbar {
   position: absolute;
+  right: 0;
   top: 0;
   bottom: 0;
-  width: 8px;
-  z-index: 7;
-  pointer-events: none;
-  background: transparent;
+  width: 20px;
+  z-index: 3;
+  overflow-y: auto;
+  overflow-x: hidden;
+  pointer-events: auto;
   
-  // Scrollbar track
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba($purple-medium, 0.2);
-    border-radius: 4px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+  // Hide scrollbar but keep functionality
+  scrollbar-width: thin;
+  scrollbar-color: rgba($purple-dark, 0.7) rgba($purple-light, 0.3);
+  
+  // Webkit scrollbar styling
+  &::-webkit-scrollbar {
+    width: 20px;
   }
   
-  // Scrollbar thumb
-  &::after {
-    content: '';
-    position: absolute;
-    top: 20%;
-    left: 0;
-    right: 0;
-    height: 30%;
-    background: rgba($purple-dark, 0.6);
-    border-radius: 4px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    box-shadow: 0 0 4px rgba($purple-dark, 0.3);
+  &::-webkit-scrollbar-track {
+    background: rgba($purple-light, 0.3);
+    border-left: 1px solid rgba($purple-medium, 0.3);
   }
   
-  // Show on hover
-  &:hover {
-    &::before,
-    &::after {
-      opacity: 1;
-    }
-  }
-}
-
-.scrollIndicatorLeft {
-  left: 0;
-  
-  &::before,
-  &::after {
-    left: 2px;
-    right: 2px;
-  }
-}
-
-.scrollIndicatorRight {
-  right: 0;
-  
-  &::before,
-  &::after {
-    left: 2px;
-    right: 2px;
-  }
-}
-
-// Show indicators when viewer wrapper is hovered
-.viewerWrapper:hover {
-  .scrollIndicatorLeft,
-  .scrollIndicatorRight {
-    &::before {
-      opacity: 0.6;
+  &::-webkit-scrollbar-thumb {
+    background: rgba($purple-dark, 0.7);
+    border-radius: 0;
+    border-left: 1px solid rgba($purple-medium, 0.3);
+    
+    &:hover {
+      background: rgba($purple-dark, 0.9);
     }
     
-    &::after {
-      opacity: 0.8;
+    &:active {
+      background: $purple-dark;
     }
   }
+  
+  // Hide the inner content (we only want the scrollbar)
+  > div {
+    pointer-events: none;
+  }
+}
+
+.fileCounterText {
+  color: $purple-dark;
+  font-size: 12px;
+  font-weight: $font-weight-semibold;
+  white-space: nowrap;
+  margin-left: $spacing-xs;
 }
 

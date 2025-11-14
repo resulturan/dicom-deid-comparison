@@ -258,21 +258,17 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
     }
   }, [file, renderDicomImage, viewport.windowCenter, viewport.windowWidth]);
 
-  // Mouse wheel for zoom - only when a tool is active
+  // Mouse wheel for zoom - only when Zoom tool is active and Ctrl is held
   const handleWheel = useCallback(
     (e: WheelEvent) => {
-      // If no tool is active, don't handle wheel here (let parent handle file navigation)
-      if (!activeTool) {
-        return;
+      // Only handle zoom when Zoom tool is active AND Ctrl is held
+      if (activeTool !== 'Zoom' || !e.ctrlKey) {
+        return; // Let parent handle file navigation
       }
 
-      // If Ctrl or Shift is held, let parent handle file navigation
-      if (e.ctrlKey || e.shiftKey) {
-        return;
-      }
-
-      // Only handle zoom when a tool is active
+      // Handle zoom
       e.preventDefault();
+      e.stopPropagation();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       const newScale = Math.max(0.1, Math.min(10, viewport.scale + delta));
       updateViewport({ scale: newScale });
@@ -328,13 +324,14 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
     setIsDragging(false);
   }, []);
 
-  // Attach wheel listener - only when a tool is active
+  // Attach wheel listener - only for zoom when Zoom tool is active
   useEffect(() => {
     const element = viewerRef.current;
     if (!element) return;
 
-    // Only attach listener if a tool is active
-    if (activeTool) {
+    // Only attach listener if Zoom tool is active (for Ctrl+scroll zoom)
+    if (activeTool === 'Zoom') {
+      // Use normal bubbling (not capture) so parent can handle file navigation first
       element.addEventListener('wheel', handleWheel, { passive: false });
       return () => {
         element.removeEventListener('wheel', handleWheel);

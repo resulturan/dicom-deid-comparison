@@ -18,6 +18,8 @@ const DualViewerContainer = () => {
   const { originalFiles, deidentifiedFiles, currentFileIndex } = useAppSelector((state) => state.dicom);
   const { handleSelectFile } = useDicomUpload();
   const containerRef = useRef<HTMLDivElement>(null);
+  const leftScrollbarRef = useRef<HTMLDivElement>(null);
+  const rightScrollbarRef = useRef<HTMLDivElement>(null);
 
   const hasFiles = originalFiles.length > 0;
   const currentFile = originalFiles[currentFileIndex];
@@ -53,12 +55,12 @@ const DualViewerContainer = () => {
     }
   }, [dispatch, currentFileIndex, originalFiles.length, hasMultipleFiles]);
 
+
   // Get active tool state from both viewers
   const leftActiveTool = useAppSelector((state) => state.viewer.leftViewer.tools.activeTool);
   const rightActiveTool = useAppSelector((state) => state.viewer.rightViewer.tools.activeTool);
-  const hasActiveTool = leftActiveTool !== null || rightActiveTool !== null;
 
-  // Mouse wheel navigation - change images when no tool is active
+  // Mouse wheel navigation - scroll to change images
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       if (!hasMultipleFiles) return;
@@ -69,40 +71,51 @@ const DualViewerContainer = () => {
       // Only handle if we're over a viewer
       if (!isOverViewer) return;
 
-      // If Ctrl or Shift is held, always navigate files
-      if (e.ctrlKey || e.shiftKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.deltaY > 0) {
-          handleNextFile();
-        } else {
-          handlePreviousFile();
-        }
+      // If Zoom tool is active and Ctrl is held, let the viewer handle zoom (don't prevent default)
+      const isZoomTool = leftActiveTool === 'Zoom' || rightActiveTool === 'Zoom';
+      if (isZoomTool && e.ctrlKey) {
+        // Let the viewer handle zoom - don't prevent default here
         return;
       }
 
-      // If no tool is active, navigate files
-      if (!hasActiveTool) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.deltaY > 0) {
-          handleNextFile();
-        } else {
-          handlePreviousFile();
-        }
+      // Default behavior: scroll changes images
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.deltaY > 0) {
+        handleNextFile();
+      } else {
+        handlePreviousFile();
       }
-      // If a tool is active, let the viewer handle it (zoom/pan/etc) - don't prevent default
     };
 
     const container = containerRef.current;
     if (container) {
-      // Use capture phase to check first, but don't always prevent
-      container.addEventListener('wheel', handleWheel, { passive: false });
+      // Use capture phase to handle before viewer's listener
+      container.addEventListener('wheel', handleWheel, { passive: false, capture: true });
       return () => {
-        container.removeEventListener('wheel', handleWheel);
+        container.removeEventListener('wheel', handleWheel, { capture: true } as EventListenerOptions);
       };
     }
-  }, [handleNextFile, handlePreviousFile, hasMultipleFiles, hasActiveTool, leftActiveTool, rightActiveTool]);
+  }, [handleNextFile, handlePreviousFile, hasMultipleFiles, leftActiveTool, rightActiveTool]);
+
+  // Sync scrollbar position with current file index
+  useEffect(() => {
+    if (!hasMultipleFiles) return;
+
+    const updateScrollbar = (scrollbar: HTMLDivElement | null) => {
+      if (!scrollbar) return;
+      const scrollHeight = scrollbar.scrollHeight - scrollbar.clientHeight;
+      if (scrollHeight > 0) {
+        const scrollTop = (currentFileIndex / (originalFiles.length - 1)) * scrollHeight;
+        if (Math.abs(scrollbar.scrollTop - scrollTop) > 1) {
+          scrollbar.scrollTop = scrollTop;
+        }
+      }
+    };
+
+    updateScrollbar(leftScrollbarRef.current);
+    updateScrollbar(rightScrollbarRef.current);
+  }, [currentFileIndex, hasMultipleFiles, originalFiles.length]);
 
   return (
     <div ref={containerRef} className={styles.container}>
@@ -113,8 +126,67 @@ const DualViewerContainer = () => {
             className={styles.card}
             title={
               <div className={styles.cardTitle}>
-                <EyeOutlined />
-                <span>Original DICOM</span>
+                <div className={styles.titleLeft}>
+                  <EyeOutlined />
+                  <span>Original DICOM</span>
+                </div>
+                {hasFiles && (
+                  <div className={styles.titleRight}>
+                    <FileImageOutlined className={styles.navigationIcon} />
+                    <Select
+                      className={styles.fileSelect}
+                      value={currentFileIndex}
+                      onChange={handleSelectFile}
+                      disabled={!hasMultipleFiles}
+                      placeholder="Select a file"
+                      size="small"
+                      options={originalFiles.map((file, index) => ({
+                        value: index,
+                        label: (
+                          <Space>
+                            <FileImageOutlined
+                              style={{ color: file.status === 'complete' ? '#52c41a' : '#faad14' }}
+                            />
+                            <span className={index === currentFileIndex ? styles.fileNameActive : styles.fileNameInactive}>
+                              {file.fileName}
+                            </span>
+                            {file.status === 'complete' && (
+                              <Tag color="success" className={styles.tagMargin}>Ready</Tag>
+                            )}
+                            {file.status === 'processing' && (
+                              <Tag color="processing" className={styles.tagMargin}>Processing</Tag>
+                            )}
+                          </Space>
+                        ),
+                      }))}
+                    />
+                    {hasMultipleFiles && (
+                      <Text className={styles.fileCounterText}>
+                        {currentFileIndex + 1} / {originalFiles.length}
+                      </Text>
+                    )}
+                    {hasMultipleFiles && (
+                      <Space size="small" className={styles.navigationButtons}>
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<LeftOutlined />}
+                          onClick={handlePreviousFile}
+                          title="Previous file (←)"
+                          className={styles.navButton}
+                        />
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<RightOutlined />}
+                          onClick={handleNextFile}
+                          title="Next file (→)"
+                          className={styles.navButton}
+                        />
+                      </Space>
+                    )}
+                  </div>
+                )}
               </div>
             }
           >
@@ -136,69 +208,26 @@ const DualViewerContainer = () => {
                 <div className={styles.viewerWrapper}>
                   <DicomViewer file={currentFile} viewerId="left" />
                   {hasMultipleFiles && (
-                    <>
-                      <div className={styles.scrollIndicatorLeft}></div>
-                      <div className={styles.scrollIndicatorRight}></div>
-                    </>
-                  )}
-
-                  {/* File Selector and Navigation - Overlay at Top */}
-                  <div className={styles.navigationOverlay}>
-                    <div className={styles.navigationRow}>
-                      <FileImageOutlined className={styles.navigationIcon} />
-                      <Select
-                        className={styles.fileSelect}
-                        value={currentFileIndex}
-                        onChange={handleSelectFile}
-                        disabled={!hasMultipleFiles}
-                        placeholder="Select a file"
-                        size="small"
-                        options={originalFiles.map((file, index) => ({
-                          value: index,
-                          label: (
-                            <Space>
-                              <FileImageOutlined
-                                style={{ color: file.status === 'complete' ? '#52c41a' : '#faad14' }}
-                              />
-                              <span className={index === currentFileIndex ? styles.fileNameActive : styles.fileNameInactive}>
-                                {file.fileName}
-                              </span>
-                              {file.status === 'complete' && (
-                                <Tag color="success" className={styles.tagMargin}>Ready</Tag>
-                              )}
-                              {file.status === 'processing' && (
-                                <Tag color="processing" className={styles.tagMargin}>Processing</Tag>
-                              )}
-                            </Space>
-                          ),
-                        }))}
-                      />
-                      {hasMultipleFiles && (
-                        <Space size="small" className={styles.navigationButtons}>
-                          <Button
-                            type="primary"
-                            size="small"
-                            icon={<LeftOutlined />}
-                            onClick={handlePreviousFile}
-                            title="Previous file (←)"
-                            className={styles.navButton}
-                          >
-                            
-                          </Button>
-                          <Button
-                            type="primary"
-                            size="small"
-                            icon={<RightOutlined />}
-                            onClick={handleNextFile}
-                            title="Next file (→)"
-                            className={styles.navButton}
-                          >
-                            
-                          </Button>
-                        </Space>
-                      )}
+                    <div 
+                      className={styles.nativeScrollbar}
+                      onScroll={(e) => {
+                        const scrollContainer = e.currentTarget;
+                        const scrollTop = scrollContainer.scrollTop;
+                        const scrollHeight = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+                        if (scrollHeight > 0) {
+                          const scrollPercentage = scrollTop / scrollHeight;
+                          const newIndex = Math.round(scrollPercentage * (originalFiles.length - 1));
+                          const clampedIndex = Math.max(0, Math.min(originalFiles.length - 1, newIndex));
+                          if (clampedIndex !== currentFileIndex) {
+                            dispatch(setCurrentFileIndex(clampedIndex));
+                          }
+                        }
+                      }}
+                      ref={leftScrollbarRef}
+                    >
+                      <div style={{ height: `${originalFiles.length * 100}px` }} />
                     </div>
-                  </div>
+                  )}
 
                   {/* File Metadata - Collapsible Overlay at Bottom */}
                   {hasMetadata && currentFile?.metadata && (
@@ -339,12 +368,71 @@ const DualViewerContainer = () => {
             className={styles.card}
             title={
               <div className={styles.cardTitle}>
-                <SafetyOutlined />
-                <span>Deidentified DICOM</span>
-                {hasDeidentified && (
-                  <Tag color="success" className={styles.tagMargin}>
-                    {deidentifiedFiles.length} file(s) deidentified
-                  </Tag>
+                <div className={styles.titleLeft}>
+                  <SafetyOutlined />
+                  <span>Deidentified DICOM</span>
+                  {hasDeidentified && (
+                    <Tag color="success" className={styles.tagMargin}>
+                      {deidentifiedFiles.length} file(s) deidentified
+                    </Tag>
+                  )}
+                </div>
+                {hasFiles && hasDeidentified && (
+                  <div className={styles.titleRight}>
+                    <FileImageOutlined className={styles.navigationIcon} />
+                    <Select
+                      className={styles.fileSelect}
+                      value={currentFileIndex}
+                      onChange={handleSelectFile}
+                      disabled={!hasMultipleFiles}
+                      placeholder="Select a file"
+                      size="small"
+                      options={deidentifiedFiles.map((file, index) => ({
+                        value: index,
+                        label: (
+                          <Space>
+                            <FileImageOutlined
+                              style={{ color: file.status === 'complete' ? '#52c41a' : '#faad14' }}
+                            />
+                            <span className={index === currentFileIndex ? styles.fileNameActive : styles.fileNameInactive}>
+                              {file.fileName}
+                            </span>
+                            {file.status === 'complete' && (
+                              <Tag color="success" className={styles.tagMargin}>Ready</Tag>
+                            )}
+                            {file.status === 'processing' && (
+                              <Tag color="processing" className={styles.tagMargin}>Processing</Tag>
+                            )}
+                          </Space>
+                        ),
+                      }))}
+                    />
+                    {hasMultipleFiles && (
+                      <Text className={styles.fileCounterText}>
+                        {currentFileIndex + 1} / {originalFiles.length}
+                      </Text>
+                    )}
+                    {hasMultipleFiles && (
+                      <Space size="small" className={styles.navigationButtons}>
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<LeftOutlined />}
+                          onClick={handlePreviousFile}
+                          title="Previous file (←)"
+                          className={styles.navButton}
+                        />
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<RightOutlined />}
+                          onClick={handleNextFile}
+                          title="Next file (→)"
+                          className={styles.navButton}
+                        />
+                      </Space>
+                    )}
+                  </div>
                 )}
               </div>
             }
@@ -374,10 +462,25 @@ const DualViewerContainer = () => {
                 <div className={styles.viewerWrapper}>
                   <DicomViewer file={currentDeidentifiedFile} viewerId="right" />
                   {hasMultipleFiles && (
-                    <>
-                      <div className={styles.scrollIndicatorLeft}></div>
-                      <div className={styles.scrollIndicatorRight}></div>
-                    </>
+                    <div 
+                      className={styles.nativeScrollbar}
+                      onScroll={(e) => {
+                        const scrollContainer = e.currentTarget;
+                        const scrollTop = scrollContainer.scrollTop;
+                        const scrollHeight = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+                        if (scrollHeight > 0) {
+                          const scrollPercentage = scrollTop / scrollHeight;
+                          const newIndex = Math.round(scrollPercentage * (originalFiles.length - 1));
+                          const clampedIndex = Math.max(0, Math.min(originalFiles.length - 1, newIndex));
+                          if (clampedIndex !== currentFileIndex) {
+                            dispatch(setCurrentFileIndex(clampedIndex));
+                          }
+                        }
+                      }}
+                      ref={rightScrollbarRef}
+                    >
+                      <div style={{ height: `${originalFiles.length * 100}px` }} />
+                    </div>
                   )}
 
                   {/* Deidentified Metadata - Collapsible Overlay at Bottom */}
