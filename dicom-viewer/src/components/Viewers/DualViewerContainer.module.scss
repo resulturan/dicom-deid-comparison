@@ -40,6 +40,39 @@
   width: 100%;
   height: 100%;
   position: relative;
+  
+  // Scroll gradient indicators on sides
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 60px;
+    pointer-events: none;
+    z-index: 5;
+    transition: opacity 0.3s ease;
+  }
+
+  &::before {
+    left: 0;
+    background: linear-gradient(
+      to right,
+      rgba($purple-medium, 0.4) 0%,
+      rgba($purple-medium, 0.2) 30%,
+      transparent 100%
+    );
+  }
+
+  &::after {
+    right: 0;
+    background: linear-gradient(
+      to left,
+      rgba($purple-medium, 0.4) 0%,
+      rgba($purple-medium, 0.2) 30%,
+      transparent 100%
+    );
+  }
 }
 
 .navigationOverlay {
@@ -59,8 +92,8 @@
 .navigationRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: $spacing-sm;
+  width: 100%;
 }
 
 .navigationInfo {
@@ -91,7 +124,7 @@
   border: none;
   box-shadow: 0 2px 4px rgba($purple-medium, 0.3);
   font-weight: $font-weight-semibold;
-  min-width: 70px;
+  min-width: 30px;
   transition: all $transition-fast;
 
   &:hover {
@@ -121,7 +154,8 @@
 }
 
 .fileSelect {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .fileSelectIcon {
@@ -146,13 +180,15 @@
 }
 
 .metadataCollapse {
-  background: $bg-overlay;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba($purple-medium, 0.5);
+  background: rgba($purple-light, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba($purple-medium, 0.3);
   border-radius: $border-radius-lg;
-  box-shadow: 0 4px 12px rgba($purple-medium, 0.3);
+  box-shadow: 0 4px 12px rgba($purple-medium, 0.2);
 
   :global(.ant-collapse-header) {
+    background: transparent !important;
+    
     .icon {
       color: $purple-dark;
     }
@@ -162,13 +198,17 @@
       font-weight: $font-weight-semibold;
     }
   }
+
+  :global(.ant-collapse-content) {
+    background: transparent !important;
+  }
 }
 
 .metadataContent {
   max-height: 300px;
   overflow-y: auto;
-  background: $bg-overlay-content;
-  backdrop-filter: blur(10px);
+  background: rgba($purple-light, 0.5);
+  backdrop-filter: blur(8px);
   border-radius: $border-radius-lg;
   padding: $spacing-sm;
 
@@ -238,5 +278,58 @@
 
 .tagMargin {
   margin-left: 8px;
+}
+
+.scrollIndicatorLeft,
+.scrollIndicatorRight {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 7;
+  pointer-events: none;
+  color: $purple-dark;
+  font-size: 28px;
+  opacity: 0.7;
+  background: rgba($purple-light, 0.8);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba($purple-medium, 0.3);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.scrollIndicatorLeft {
+  left: 12px;
+  animation-name: pulseLeft;
+}
+
+.scrollIndicatorRight {
+  right: 12px;
+  animation-name: pulseRight;
+}
+
+@keyframes pulseLeft {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translateY(-50%) translateX(0);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(-50%) translateX(-3px);
+  }
+}
+
+@keyframes pulseRight {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translateY(-50%) translateX(0);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(-50%) translateX(3px);
+  }
 }
 

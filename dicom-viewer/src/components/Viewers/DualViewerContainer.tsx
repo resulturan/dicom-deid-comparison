@@ -135,59 +135,21 @@ const DualViewerContainer = () => {
                 {/* DICOM Viewer - Full Height */}
                 <div className={styles.viewerWrapper}>
                   <DicomViewer file={currentFile} viewerId="left" />
+                  {hasMultipleFiles && (
+                    <>
+                      <div className={styles.scrollIndicatorLeft}>
+                        <LeftOutlined />
+                      </div>
+                      <div className={styles.scrollIndicatorRight}>
+                        <RightOutlined />
+                      </div>
+                    </>
+                  )}
 
                   {/* File Selector and Navigation - Overlay at Top */}
                   <div className={styles.navigationOverlay}>
-                    <Space direction="vertical" className={styles.spaceFullWidth} size="small">
-                      {/* Navigation Controls Row */}
-                      <div className={styles.navigationRow}>
-                        <div className={styles.navigationInfo}>
-                          <FileImageOutlined className={styles.navigationIcon} />
-                          <Text strong className={styles.navigationText}>
-                            {hasMultipleFiles
-                              ? `File ${currentFileIndex + 1} of ${originalFiles.length}`
-                              : 'Current File'}
-                          </Text>
-                        </div>
-
-                        {hasMultipleFiles ? (
-                          <Space size="small" className={styles.navigationButtons}>
-                            <Button
-                              type="primary"
-                              size="small"
-                              icon={<LeftOutlined />}
-                              onClick={handlePreviousFile}
-                              title="Previous file (←)"
-                              className={styles.navButton}
-                            >
-                              ← Prev
-                            </Button>
-
-                            <div className={styles.fileCounter}>
-                              <Text strong className={styles.fileCounterText}>
-                                {currentFileIndex + 1} / {originalFiles.length}
-                              </Text>
-                            </div>
-
-                            <Button
-                              type="primary"
-                              size="small"
-                              icon={<RightOutlined />}
-                              onClick={handleNextFile}
-                              title="Next file (→)"
-                              className={styles.navButton}
-                            >
-                              Next →
-                            </Button>
-                          </Space>
-                        ) : (
-                          <Tag color="blue" className={styles.fileTag}>
-                            1 file loaded
-                          </Tag>
-                        )}
-                      </div>
-
-                      {/* File Selector Dropdown */}
+                    <div className={styles.navigationRow}>
+                      <FileImageOutlined className={styles.navigationIcon} />
                       <Select
                         className={styles.fileSelect}
                         value={currentFileIndex}
@@ -215,7 +177,31 @@ const DualViewerContainer = () => {
                           ),
                         }))}
                       />
-                    </Space>
+                      {hasMultipleFiles && (
+                        <Space size="small" className={styles.navigationButtons}>
+                          <Button
+                            type="primary"
+                            size="small"
+                            icon={<LeftOutlined />}
+                            onClick={handlePreviousFile}
+                            title="Previous file (←)"
+                            className={styles.navButton}
+                          >
+                            
+                          </Button>
+                          <Button
+                            type="primary"
+                            size="small"
+                            icon={<RightOutlined />}
+                            onClick={handleNextFile}
+                            title="Next file (→)"
+                            className={styles.navButton}
+                          >
+                            
+                          </Button>
+                        </Space>
+                      )}
+                    </div>
                   </div>
 
                   {/* File Metadata - Collapsible Overlay at Bottom */}
@@ -391,6 +377,16 @@ const DualViewerContainer = () => {
                 {/* Deidentified Viewer - Full Height */}
                 <div className={styles.viewerWrapper}>
                   <DicomViewer file={currentDeidentifiedFile} viewerId="right" />
+                  {hasMultipleFiles && (
+                    <>
+                      <div className={styles.scrollIndicatorLeft}>
+                        <LeftOutlined />
+                      </div>
+                      <div className={styles.scrollIndicatorRight}>
+                        <RightOutlined />
+                      </div>
+                    </>
+                  )}
 
                   {/* Deidentified Metadata - Collapsible Overlay at Bottom */}
                   {currentDeidentifiedFile?.metadata && (
