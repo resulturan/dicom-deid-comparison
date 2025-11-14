@@ -66,8 +66,8 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
       const rows = file.metadata.rows || dataSet.uint16('x00280010') || 512;
       const columns = file.metadata.columns || dataSet.uint16('x00280011') || 512;
       const bitsAllocated = dataSet.uint16('x00280100') || 16;
-      const bitsStored = dataSet.uint16('x00280101') || bitsAllocated;
-      const highBit = dataSet.uint16('x00280102') || bitsStored - 1;
+      // const bitsStored = dataSet.uint16('x00280101') || bitsAllocated;
+      // const highBit = dataSet.uint16('x00280102') || bitsStored - 1;
       const pixelRepresentation = dataSet.uint16('x00280103') || 0; // 0 = unsigned, 1 = signed
       const samplesPerPixel = dataSet.uint16('x00280002') || 1;
       const photometricInterpretation = dataSet.string('x00280004') || 'MONOCHROME2';
@@ -146,7 +146,8 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
         }
       } else if (bitsAllocated === 16) {
         // 16-bit grayscale - need to handle byte order
-        const isLittleEndian = dataSet.littleEndian;
+        // Note: dicom-parser doesn't expose littleEndian directly, assume little-endian for DICOM
+        const isLittleEndian = true; // DICOM default is little-endian
         const bytesPerPixel = 2;
         
         // Calculate min/max for normalization if no window/level
@@ -345,6 +346,10 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
     });
   };
 
+  const handleZoomChange = (scale: number) => {
+    updateViewport({ scale });
+  };
+
   if (!file) {
     return (
       <div
@@ -518,6 +523,8 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
             activeTool={activeTool || 'WindowLevel'}
             onToolChange={handleToolChange}
             onReset={handleReset}
+            onZoomChange={handleZoomChange}
+            currentZoom={viewport.scale}
           />
         </div>
       </div>

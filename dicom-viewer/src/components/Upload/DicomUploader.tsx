@@ -7,13 +7,13 @@ import {
   LoadingOutlined,
   FileImageOutlined,
 } from '@ant-design/icons';
-import type { UploadProps, UploadFile } from 'antd';
+import type { UploadProps } from 'antd';
 import { useAppDispatch, useAppSelector } from '@store';
 import { closeUploadDrawer } from '@store/slices/uiSlice';
 import { useDicomUpload } from '@hooks/useDicomUpload';
 import { formatFileSize } from '@services/dicom/validator';
 import { formatDicomDate } from '@services/dicom/parser';
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 
 const { Dragger } = Upload;
 const { Title, Text } = Typography;
@@ -28,103 +28,38 @@ const DicomUploader = () => {
     handleRemoveFile,
     handleClearFiles,
   } = useDicomUpload();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const processedFilesRef = useRef<Set<string>>(new Set());
-
-  // Handle file selection from native input
-  const handleNativeFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      console.log('Native file input: Selected', files.length, 'files:', files.map(f => f.name));
-      
-      // Filter out already processed files
-      const newFiles = files.filter(file => {
-        const key = `${file.name}-${file.size}`;
-        if (processedFilesRef.current.has(key)) {
-          console.log('Skipping already processed file:', file.name);
-          return false;
-        }
-        processedFilesRef.current.add(key);
-        return true;
-      });
-      
-      if (newFiles.length > 0) {
-        console.log('Processing', newFiles.length, 'new files');
-        handleFileUpload(newFiles);
-      }
-      
-      // Reset input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  }, [handleFileUpload]);
+  const uploadedFilesRef = useRef<Set<string>>(new Set());
 
   const uploadProps: UploadProps = {
     name: 'file',
     multiple: true,
     accept: '.dcm,.dicom',
-    customRequest: ({ file, onSuccess, onError }) => {
-      // Custom request handler - we don't actually upload, just mark as success
-      // This allows files to stay in fileList
-      console.log('customRequest called with file:', (file as File).name);
-      setTimeout(() => {
-        onSuccess?.({});
-      }, 10);
-    },
-    beforeUpload: () => {
-      // Don't return false - let customRequest handle it
-      // This ensures files are added to fileList
-      return true;
-    },
-    onChange: (info) => {
-      console.log('onChange - fileList length:', info.fileList.length);
-      console.log('onChange - fileList details:', info.fileList.map(f => ({
-        name: f.name,
-        uid: f.uid,
-        status: f.status,
-        hasOriginFileObj: !!f.originFileObj,
-        originFileObjType: f.originFileObj ? typeof f.originFileObj : 'none'
-      })));
-      
-      // Wait a bit to ensure all files are in the fileList
-      setTimeout(() => {
-        // Extract all files from fileList
-        const allFiles: File[] = [];
-        info.fileList.forEach((fileItem: UploadFile) => {
-          // Try to get the File object
-          let file = fileItem.originFileObj;
-          if (!file) {
-            file = (fileItem as any).file;
+    beforeUpload: (file, fileList) => {
+      console.log('beforeUpload called - file:', file.name, 'fileList length:', fileList.length);
+
+      // Only process when we have the full list (this is the last file)
+      if (file === fileList[fileList.length - 1]) {
+        console.log('Processing batch of', fileList.length, 'files');
+
+        // Filter out duplicates based on name and size
+        const newFiles = fileList.filter(f => {
+          const key = `${f.name}-${f.size}-${f.lastModified}`;
+          if (uploadedFilesRef.current.has(key)) {
+            console.log('Skipping duplicate:', f.name);
+            return false;
           }
-          if (!file && (fileItem as any).response) {
-            file = (fileItem as any).response.file;
-          }
-          
-          if (file instanceof File) {
-            const key = `${file.name}-${file.size}`;
-            if (!processedFilesRef.current.has(key)) {
-              allFiles.push(file);
-              processedFilesRef.current.add(key);
-              console.log('Extracted file from fileList:', file.name);
-            }
-          } else {
-            console.warn('Could not extract File for:', fileItem.name, {
-              hasOriginFileObj: !!fileItem.originFileObj,
-              fileItemKeys: Object.keys(fileItem)
-            });
-          }
+          uploadedFilesRef.current.add(key);
+          return true;
         });
-        
-        if (allFiles.length > 0) {
-          console.log('=== PROCESSING FILES FROM onChange ===');
-          console.log('Total files to process:', allFiles.length);
-          console.log('File names:', allFiles.map(f => f.name));
-          handleFileUpload(allFiles);
-        } else {
-          console.log('No new files to process');
+
+        if (newFiles.length > 0) {
+          console.log('Uploading', newFiles.length, 'new files:', newFiles.map(f => f.name));
+          handleFileUpload(newFiles);
         }
-      }, 200); // Delay to collect all files
+      }
+
+      // Prevent default upload behavior
+      return false;
     },
     showUploadList: false,
   };
@@ -165,54 +100,98 @@ const DicomUploader = () => {
 
   return (
     <Drawer
-      title="Upload DICOM Files"
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <FileImageOutlined style={{ fontSize: 20, color: '#4096ff' }} />
+          <span style={{ fontSize: 16, fontWeight: 600 }}>Upload DICOM Files</span>
+        </div>
+      }
       placement="right"
-      width={600}
+      width={650}
       onClose={() => dispatch(closeUploadDrawer())}
       open={uploadDrawerOpen}
+      styles={{
+        header: {
+          background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+          borderBottom: '1px solid rgba(64, 150, 255, 0.3)',
+        },
+        body: {
+          background: '#0a0a0a',
+          padding: '24px',
+        },
+      }}
     >
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         {/* Upload Area */}
         <div>
-          <Dragger {...uploadProps}>
+          <Dragger
+            {...uploadProps}
+            style={{
+              background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+              border: '2px dashed rgba(64, 150, 255, 0.4)',
+              borderRadius: 12,
+              padding: '40px 20px',
+            }}
+          >
             <p className="ant-upload-drag-icon">
-              <InboxOutlined />
+              <InboxOutlined style={{ fontSize: 64, color: '#4096ff' }} />
             </p>
-            <p className="ant-upload-text">Click or drag DICOM files to this area</p>
-            <p className="ant-upload-hint">
-              Support for single or multiple file upload. Accepts .dcm and .dicom files (max 100MB per file).
+            <p className="ant-upload-text" style={{ fontSize: 18, fontWeight: 600, color: '#fff', marginTop: 16 }}>
+              Click or drag DICOM files here
+            </p>
+            <p className="ant-upload-hint" style={{ fontSize: 14, color: '#aaa', marginTop: 8 }}>
+              Support for single or multiple file upload
+              <br />
+              Accepts <Text code style={{ background: 'rgba(64, 150, 255, 0.2)', color: '#4096ff', padding: '2px 8px', borderRadius: 4 }}>.dcm</Text> and{' '}
+              <Text code style={{ background: 'rgba(64, 150, 255, 0.2)', color: '#4096ff', padding: '2px 8px', borderRadius: 4 }}>.dicom</Text> files (max 100MB per file)
             </p>
           </Dragger>
         </div>
 
         {/* Statistics */}
         {files.length > 0 && (
-          <Row gutter={16}>
-            <Col span={6}>
-              <Statistic title="Total" value={statistics.total} />
-            </Col>
-            <Col span={6}>
-              <Statistic
-                title="Complete"
-                value={statistics.complete}
-                valueStyle={{ color: '#52c41a' }}
-              />
-            </Col>
-            <Col span={6}>
-              <Statistic
-                title="Processing"
-                value={statistics.processing}
-                valueStyle={{ color: '#1890ff' }}
-              />
-            </Col>
-            <Col span={6}>
-              <Statistic
-                title="Errors"
-                value={statistics.error}
-                valueStyle={{ color: '#f5222d' }}
-              />
-            </Col>
-          </Row>
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+              borderRadius: 12,
+              padding: '20px',
+              border: '1px solid rgba(64, 150, 255, 0.2)',
+            }}
+          >
+            <Row gutter={16}>
+              <Col span={6}>
+                <Statistic
+                  title={<span style={{ color: '#999' }}>Total</span>}
+                  value={statistics.total}
+                  valueStyle={{ color: '#fff', fontWeight: 600 }}
+                />
+              </Col>
+              <Col span={6}>
+                <Statistic
+                  title={<span style={{ color: '#999' }}>Complete</span>}
+                  value={statistics.complete}
+                  valueStyle={{ color: '#52c41a', fontWeight: 600 }}
+                  prefix={<CheckCircleOutlined />}
+                />
+              </Col>
+              <Col span={6}>
+                <Statistic
+                  title={<span style={{ color: '#999' }}>Processing</span>}
+                  value={statistics.processing}
+                  valueStyle={{ color: '#1890ff', fontWeight: 600 }}
+                  prefix={<LoadingOutlined />}
+                />
+              </Col>
+              <Col span={6}>
+                <Statistic
+                  title={<span style={{ color: '#999' }}>Errors</span>}
+                  value={statistics.error}
+                  valueStyle={{ color: '#f5222d', fontWeight: 600 }}
+                  prefix={<CloseCircleOutlined />}
+                />
+              </Col>
+            </Row>
+          </div>
         )}
 
         {/* File List */}
@@ -234,7 +213,7 @@ const DicomUploader = () => {
                 size="small"
                 icon={<DeleteOutlined />}
                 onClick={() => {
-                  processedFilesRef.current.clear();
+                  uploadedFilesRef.current.clear();
                   handleClearFiles();
                 }}
               >
@@ -246,17 +225,30 @@ const DicomUploader = () => {
           <List
             size="small"
             bordered
+            style={{
+              background: '#1a1a1a',
+              borderColor: 'rgba(64, 150, 255, 0.2)',
+              borderRadius: 8,
+            }}
             dataSource={files}
             locale={{ emptyText: 'No files uploaded yet' }}
             renderItem={(file) => (
               <List.Item
+                style={{
+                  background: file.status === 'complete' ? 'rgba(82, 196, 26, 0.05)' :
+                             file.status === 'error' ? 'rgba(245, 34, 45, 0.05)' :
+                             'transparent',
+                  borderBottom: '1px solid rgba(64, 150, 255, 0.1)',
+                  padding: '12px 16px',
+                }}
                 actions={[
                   <Button
-                    type="link"
+                    type="text"
                     danger
                     size="small"
                     icon={<DeleteOutlined />}
                     onClick={() => handleRemoveFile(file.id)}
+                    style={{ color: '#ff4d4f' }}
                   >
                     Remove
                   </Button>,
@@ -266,27 +258,27 @@ const DicomUploader = () => {
                   avatar={getStatusIcon(file.status)}
                   title={
                     <Space>
-                      <Text strong>{file.fileName}</Text>
+                      <Text strong style={{ color: '#fff' }}>{file.fileName}</Text>
                       {getStatusTag(file.status)}
                     </Space>
                   }
                   description={
                     <div>
                       <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
+                        <Text type="secondary" style={{ fontSize: 12, color: '#999' }}>
                           Size: {formatFileSize(file.file.size)}
                         </Text>
                         {file.metadata && (
                           <>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
+                            <Text type="secondary" style={{ fontSize: 12, color: '#999' }}>
                               Patient: {file.metadata.patientName || 'N/A'}
                             </Text>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
+                            <Text type="secondary" style={{ fontSize: 12, color: '#999' }}>
                               Modality: {file.metadata.modality || 'N/A'} | Date:{' '}
                               {formatDicomDate(file.metadata.studyDate)}
                             </Text>
                             {file.metadata.rows && file.metadata.columns && (
-                              <Text type="secondary" style={{ fontSize: 12 }}>
+                              <Text type="secondary" style={{ fontSize: 12, color: '#999' }}>
                                 Dimensions: {file.metadata.columns} × {file.metadata.rows}
                               </Text>
                             )}
@@ -297,6 +289,10 @@ const DicomUploader = () => {
                             percent={file.progress}
                             size="small"
                             status="active"
+                            strokeColor={{
+                              '0%': '#4096ff',
+                              '100%': '#1677ff',
+                            }}
                           />
                         )}
                         {file.error && (
