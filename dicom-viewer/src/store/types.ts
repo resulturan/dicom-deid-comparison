@@ -123,6 +123,7 @@ export interface UIState {
   metadataDrawerOpen: boolean;
   settingsDrawerOpen: boolean;
   exportDrawerOpen: boolean;
+  notificationDrawerOpen: boolean;
   loading: boolean;
   loadingMessage: string;
   errors: string[];

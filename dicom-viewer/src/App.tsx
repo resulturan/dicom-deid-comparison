@@ -3,6 +3,7 @@ import MainLayout from '@components/Layout/MainLayout';
 import DualViewerContainer from '@components/Viewers/DualViewerContainer';
 import DicomUploader from '@components/Upload/DicomUploader';
 import NotificationHandler from '@components/Layout/NotificationHandler';
+import NotificationDrawer from '@components/Layout/NotificationDrawer';
 import LoadingOverlay from '@components/Layout/LoadingOverlay';
 import DeidentificationSettings from '@components/Controls/DeidentificationSettings';
 import MetadataDrawer from '@components/Metadata/MetadataDrawer';
@@ -37,6 +38,7 @@ function App() {
         <ExportDrawer />
         <ShortcutsModal open={shortcutsModalOpen} onClose={() => setShortcutsModalOpen(false)} />
         <NotificationHandler />
+        <NotificationDrawer />
         <LoadingOverlay />
       </MainLayout>
     </ErrorBoundary>

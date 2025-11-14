@@ -7,6 +7,7 @@ const initialState: UIState = {
   metadataDrawerOpen: false,
   settingsDrawerOpen: false,
   exportDrawerOpen: false,
+  notificationDrawerOpen: false,
   loading: false,
   loadingMessage: '',
   errors: [],
@@ -58,6 +59,16 @@ const uiSlice = createSlice({
       state.exportDrawerOpen = !state.exportDrawerOpen;
     },
 
+    openNotificationDrawer: (state) => {
+      state.notificationDrawerOpen = true;
+    },
+    closeNotificationDrawer: (state) => {
+      state.notificationDrawerOpen = false;
+    },
+    toggleNotificationDrawer: (state) => {
+      state.notificationDrawerOpen = !state.notificationDrawerOpen;
+    },
+
     // Loading State
     setLoading: (state, action: PayloadAction<{ loading: boolean; message?: string }>) => {
       state.loading = action.payload.loading;
@@ -105,6 +116,9 @@ export const {
   openExportDrawer,
   closeExportDrawer,
   toggleExportDrawer,
+  openNotificationDrawer,
+  closeNotificationDrawer,
+  toggleNotificationDrawer,
   setLoading,
   addError,
   removeError,

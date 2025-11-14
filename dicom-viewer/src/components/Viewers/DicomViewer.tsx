@@ -257,15 +257,26 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
     }
   }, [file, renderDicomImage, viewport.windowCenter, viewport.windowWidth]);
 
-  // Mouse wheel for zoom
+  // Mouse wheel for zoom - only when a tool is active
   const handleWheel = useCallback(
     (e: WheelEvent) => {
+      // If no tool is active, don't handle wheel here (let parent handle file navigation)
+      if (!activeTool) {
+        return;
+      }
+
+      // If Ctrl or Shift is held, let parent handle file navigation
+      if (e.ctrlKey || e.shiftKey) {
+        return;
+      }
+
+      // Only handle zoom when a tool is active
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       const newScale = Math.max(0.1, Math.min(10, viewport.scale + delta));
       updateViewport({ scale: newScale });
     },
-    [viewport.scale, updateViewport]
+    [viewport.scale, updateViewport, activeTool]
   );
 
   // Mouse events for pan and window/level
@@ -316,17 +327,19 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
     setIsDragging(false);
   }, []);
 
-  // Attach wheel listener
+  // Attach wheel listener - only when a tool is active
   useEffect(() => {
     const element = viewerRef.current;
     if (!element) return;
 
-    element.addEventListener('wheel', handleWheel, { passive: false });
-
-    return () => {
-      element.removeEventListener('wheel', handleWheel);
-    };
-  }, [handleWheel]);
+    // Only attach listener if a tool is active
+    if (activeTool) {
+      element.addEventListener('wheel', handleWheel, { passive: false });
+      return () => {
+        element.removeEventListener('wheel', handleWheel);
+      };
+    }
+  }, [handleWheel, activeTool]);
 
   const handleToolChange = (tool: string) => {
     if (viewerId === 'left') {

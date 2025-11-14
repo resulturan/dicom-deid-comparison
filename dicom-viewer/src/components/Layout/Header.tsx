@@ -1,4 +1,4 @@
-import { Layout, Button, Space, Typography, Tooltip } from 'antd';
+import { Layout, Button, Space, Typography, Tooltip, Badge } from 'antd';
 import {
   UploadOutlined,
   SettingOutlined,
@@ -7,9 +7,10 @@ import {
   SafetyOutlined,
   DownloadOutlined,
   QuestionCircleOutlined,
+  BellOutlined,
 } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '@store';
-import { toggleUploadDrawer, toggleMetadataDrawer, toggleSettingsDrawer, toggleExportDrawer } from '@store/slices/uiSlice';
+import { toggleUploadDrawer, toggleMetadataDrawer, toggleSettingsDrawer, toggleExportDrawer, toggleNotificationDrawer } from '@store/slices/uiSlice';
 import { deidentifyAllFiles } from '@store/slices/dicomThunks';
 
 const { Header: AntHeader } = Layout;
@@ -18,6 +19,7 @@ const { Title } = Typography;
 const Header = () => {
   const dispatch = useAppDispatch();
   const { originalFiles, deidentifiedFiles, isProcessing } = useAppSelector((state) => state.dicom);
+  const { notifications } = useAppSelector((state) => state.ui);
 
   const handleDeidentify = () => {
     dispatch(deidentifyAllFiles());
@@ -29,6 +31,7 @@ const Header = () => {
 
   const hasFiles = originalFiles.length > 0;
   const hasDeidentified = deidentifiedFiles.length > 0;
+  const notificationCount = notifications.length;
 
   return (
     <AntHeader
@@ -102,6 +105,16 @@ const Header = () => {
           >
             Help
           </Button>
+        </Tooltip>
+        <Tooltip title="View notifications">
+          <Badge count={notificationCount} showZero={false} offset={[-2, 2]}>
+            <Button
+              icon={<BellOutlined />}
+              onClick={() => dispatch(toggleNotificationDrawer())}
+            >
+              Notifications
+            </Button>
+          </Badge>
         </Tooltip>
       </Space>
     </AntHeader>

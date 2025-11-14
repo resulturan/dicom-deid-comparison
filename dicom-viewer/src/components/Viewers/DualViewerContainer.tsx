@@ -52,30 +52,56 @@ const DualViewerContainer = () => {
     }
   }, [dispatch, currentFileIndex, originalFiles.length, hasMultipleFiles]);
 
-  // Mouse wheel navigation (when Ctrl or Shift is held, or when not over viewer)
+  // Get active tool state from both viewers
+  const leftActiveTool = useAppSelector((state) => state.viewer.leftViewer.tools.activeTool);
+  const rightActiveTool = useAppSelector((state) => state.viewer.rightViewer.tools.activeTool);
+  const hasActiveTool = leftActiveTool !== null || rightActiveTool !== null;
+
+  // Mouse wheel navigation - change images when no tool is active
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
-      // Only navigate files if Ctrl or Shift is held, or if scrolling outside viewer
+      if (!hasMultipleFiles) return;
+
+      // Check if we're over a viewer container
       const isOverViewer = (e.target as HTMLElement)?.closest('.viewer-container');
       
-      if ((e.ctrlKey || e.shiftKey) && !isOverViewer && hasMultipleFiles) {
+      // Only handle if we're over a viewer
+      if (!isOverViewer) return;
+
+      // If Ctrl or Shift is held, always navigate files
+      if (e.ctrlKey || e.shiftKey) {
         e.preventDefault();
+        e.stopPropagation();
+        if (e.deltaY > 0) {
+          handleNextFile();
+        } else {
+          handlePreviousFile();
+        }
+        return;
+      }
+
+      // If no tool is active, navigate files
+      if (!hasActiveTool) {
+        e.preventDefault();
+        e.stopPropagation();
         if (e.deltaY > 0) {
           handleNextFile();
         } else {
           handlePreviousFile();
         }
       }
+      // If a tool is active, let the viewer handle it (zoom/pan/etc) - don't prevent default
     };
 
     const container = containerRef.current;
     if (container) {
+      // Use capture phase to check first, but don't always prevent
       container.addEventListener('wheel', handleWheel, { passive: false });
       return () => {
         container.removeEventListener('wheel', handleWheel);
       };
     }
-  }, [handleNextFile, handlePreviousFile, hasMultipleFiles]);
+  }, [handleNextFile, handlePreviousFile, hasMultipleFiles, hasActiveTool, leftActiveTool, rightActiveTool]);
 
   return (
     <div ref={containerRef} style={{ height: 'calc(100vh - 64px)', padding: '16px', background: '#000' }}>
