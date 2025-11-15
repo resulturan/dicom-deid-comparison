@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 
 // https://vite.dev/config/
+// For GitHub Pages: base should be '/repository-name/' (with trailing slash)
+// Set VITE_BASE_PATH env variable or it defaults to '/dicom-deid-comparison/'
+const basePath = process.env.VITE_BASE_PATH || '/dicom-deid-comparison/';
 export default defineConfig({
+  base: process.env.NODE_ENV === 'production' ? basePath : '/',
   plugins: [react()],
   resolve: {
     alias: {
