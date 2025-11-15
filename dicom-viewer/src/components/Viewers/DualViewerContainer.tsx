@@ -1,11 +1,11 @@
-import { Row, Col, Card, Typography, Space, Tag, Select, Descriptions, Button, Collapse } from 'antd';
+import { Row, Col, Card, Typography, Space, Tag, Select, Descriptions, Button, Collapse, Tooltip } from 'antd';
 import { EyeOutlined, SafetyOutlined, FileImageOutlined, InboxOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { useEffect, useCallback, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '@store';
-import { useDicomUpload } from '@hooks/useDicomUpload';
 import { formatDicomDate, formatDicomTime } from '@services/dicom/parser';
 import { toggleUploadDrawer } from '@store/slices/uiSlice';
 import { setCurrentFileIndex } from '@store/slices/dicomSlice';
+import { setLeftFileIndex, setRightFileIndex } from '@store/slices/viewerSlice';
 import DicomViewer from './DicomViewer';
 import ViewerSyncControls from '@components/Controls/ViewerSyncControls';
 import EmptyState from '@components/Layout/EmptyState';
@@ -13,17 +13,40 @@ import styles from './DualViewerContainer.module.scss';
 
 const { Text } = Typography;
 
+// Helper component for truncated metadata text with tooltip
+const TruncatedText = ({ text, maxLength = 50, className }: { text: string | undefined | null; maxLength?: number; className?: string }) => {
+  const displayText = text || 'N/A';
+  const shouldTruncate = displayText.length > maxLength;
+  const truncatedText = shouldTruncate ? `${displayText.substring(0, maxLength)}...` : displayText;
+
+  if (shouldTruncate) {
+    return (
+      <Tooltip title={displayText} placement="topLeft">
+        <span className={className} style={{ cursor: 'help' }}>
+          {truncatedText}
+        </span>
+      </Tooltip>
+    );
+  }
+
+  return <span className={className}>{displayText}</span>;
+};
+
 const DualViewerContainer = () => {
   const dispatch = useAppDispatch();
   const { originalFiles, deidentifiedFiles, currentFileIndex } = useAppSelector((state) => state.dicom);
-  const { handleSelectFile } = useDicomUpload();
+  const { leftViewer, rightViewer, sync } = useAppSelector((state) => state.viewer);
   const containerRef = useRef<HTMLDivElement>(null);
   const leftScrollbarRef = useRef<HTMLDivElement>(null);
   const rightScrollbarRef = useRef<HTMLDivElement>(null);
 
+  // Use separate file indices when sync is disabled, otherwise use shared currentFileIndex
+  const leftFileIndex = sync.isEnabled && sync.syncScroll ? currentFileIndex : (leftViewer.fileIndex ?? currentFileIndex);
+  const rightFileIndex = sync.isEnabled && sync.syncScroll ? currentFileIndex : (rightViewer.fileIndex ?? currentFileIndex);
+
   const hasFiles = originalFiles.length > 0;
-  const currentFile = originalFiles[currentFileIndex];
-  const currentDeidentifiedFile = deidentifiedFiles[currentFileIndex];
+  const currentFile = originalFiles[leftFileIndex];
+  const currentDeidentifiedFile = deidentifiedFiles[rightFileIndex];
   const hasMetadata = currentFile?.metadata;
   const hasDeidentified = deidentifiedFiles.length > 0;
   const hasMultipleFiles = originalFiles.length > 1;
@@ -40,20 +63,35 @@ const DualViewerContainer = () => {
     }
   }, [hasFiles, originalFiles.length, currentFileIndex, hasMultipleFiles]);
 
-  // Navigation functions
+
+  // Navigation functions - update both viewers when sync is enabled, otherwise update individually
   const handlePreviousFile = useCallback(() => {
     if (hasMultipleFiles) {
-      const prevIndex = currentFileIndex > 0 ? currentFileIndex - 1 : originalFiles.length - 1;
-      dispatch(setCurrentFileIndex(prevIndex));
+      if (sync.isEnabled && sync.syncScroll) {
+        // Update shared index
+        const prevIndex = currentFileIndex > 0 ? currentFileIndex - 1 : originalFiles.length - 1;
+        dispatch(setCurrentFileIndex(prevIndex));
+      } else {
+        // Update left viewer only
+        const prevIndex = leftFileIndex > 0 ? leftFileIndex - 1 : originalFiles.length - 1;
+        dispatch(setLeftFileIndex(prevIndex));
+      }
     }
-  }, [dispatch, currentFileIndex, originalFiles.length, hasMultipleFiles]);
+  }, [dispatch, currentFileIndex, leftFileIndex, originalFiles.length, hasMultipleFiles, sync.isEnabled, sync.syncScroll]);
 
   const handleNextFile = useCallback(() => {
     if (hasMultipleFiles) {
-      const nextIndex = currentFileIndex < originalFiles.length - 1 ? currentFileIndex + 1 : 0;
-      dispatch(setCurrentFileIndex(nextIndex));
+      if (sync.isEnabled && sync.syncScroll) {
+        // Update shared index
+        const nextIndex = currentFileIndex < originalFiles.length - 1 ? currentFileIndex + 1 : 0;
+        dispatch(setCurrentFileIndex(nextIndex));
+      } else {
+        // Update left viewer only
+        const nextIndex = leftFileIndex < originalFiles.length - 1 ? leftFileIndex + 1 : 0;
+        dispatch(setLeftFileIndex(nextIndex));
+      }
     }
-  }, [dispatch, currentFileIndex, originalFiles.length, hasMultipleFiles]);
+  }, [dispatch, currentFileIndex, leftFileIndex, originalFiles.length, hasMultipleFiles, sync.isEnabled, sync.syncScroll]);
 
 
   // Get active tool state from both viewers
@@ -135,8 +173,14 @@ const DualViewerContainer = () => {
                     <FileImageOutlined className={styles.navigationIcon} />
                     <Select
                       className={styles.fileSelect}
-                      value={currentFileIndex}
-                      onChange={handleSelectFile}
+                      value={leftFileIndex}
+                      onChange={(value) => {
+                        if (sync.isEnabled && sync.syncScroll) {
+                          dispatch(setCurrentFileIndex(value));
+                        } else {
+                          dispatch(setLeftFileIndex(value));
+                        }
+                      }}
                       disabled={!hasMultipleFiles}
                       placeholder="Select a file"
                       size="small"
@@ -147,7 +191,7 @@ const DualViewerContainer = () => {
                             <FileImageOutlined
                               style={{ color: file.status === 'complete' ? '#52c41a' : '#faad14' }}
                             />
-                            <span className={index === currentFileIndex ? styles.fileNameActive : styles.fileNameInactive}>
+                            <span className={index === leftFileIndex ? styles.fileNameActive : styles.fileNameInactive}>
                               {file.fileName}
                             </span>
                             {file.status === 'complete' && (
@@ -162,7 +206,7 @@ const DualViewerContainer = () => {
                     />
                     {hasMultipleFiles && (
                       <Text className={styles.fileCounterText}>
-                        {currentFileIndex + 1} / {originalFiles.length}
+                        {leftFileIndex + 1} / {originalFiles.length}
                       </Text>
                     )}
                     {hasMultipleFiles && (
@@ -218,8 +262,14 @@ const DualViewerContainer = () => {
                           const scrollPercentage = scrollTop / scrollHeight;
                           const newIndex = Math.round(scrollPercentage * (originalFiles.length - 1));
                           const clampedIndex = Math.max(0, Math.min(originalFiles.length - 1, newIndex));
-                          if (clampedIndex !== currentFileIndex) {
-                            dispatch(setCurrentFileIndex(clampedIndex));
+                          if (sync.isEnabled && sync.syncScroll) {
+                            if (clampedIndex !== currentFileIndex) {
+                              dispatch(setCurrentFileIndex(clampedIndex));
+                            }
+                          } else {
+                            if (clampedIndex !== leftFileIndex) {
+                              dispatch(setLeftFileIndex(clampedIndex));
+                            }
                           }
                         }
                       }}
@@ -256,10 +306,10 @@ const DualViewerContainer = () => {
                                 >
                                   {/* Patient Information */}
                                   <Descriptions.Item label="Patient Name" span={2}>
-                                    {currentFile.metadata?.patientName || 'N/A'}
+                                    <TruncatedText text={currentFile.metadata?.patientName} maxLength={50} />
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Patient ID">
-                                    {currentFile.metadata?.patientID || 'N/A'}
+                                    <TruncatedText text={currentFile.metadata?.patientID} maxLength={30} />
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Patient Birth Date">
                                     {formatDicomDate(currentFile.metadata?.patientBirthDate) || 'N/A'}
@@ -279,15 +329,17 @@ const DualViewerContainer = () => {
                                     {formatDicomTime(currentFile.metadata?.studyTime)}
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Study Description" span={2}>
-                                    {currentFile.metadata?.studyDescription || 'N/A'}
+                                    <TruncatedText text={currentFile.metadata?.studyDescription} maxLength={60} />
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Accession Number">
-                                    {currentFile.metadata?.accessionNumber || 'N/A'}
+                                    <TruncatedText text={currentFile.metadata?.accessionNumber} maxLength={30} />
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Study Instance UID" span={2}>
-                                    <Text className={styles.uidText}>
-                                      {currentFile.metadata?.studyInstanceUID || 'N/A'}
-                                    </Text>
+                                    <Tooltip title={currentFile.metadata?.studyInstanceUID || 'N/A'} placement="topLeft">
+                                      <Text className={styles.uidText} style={{ cursor: 'help' }}>
+                                        {currentFile.metadata?.studyInstanceUID || 'N/A'}
+                                      </Text>
+                                    </Tooltip>
                                   </Descriptions.Item>
 
                                   {/* Series Information */}
@@ -298,12 +350,14 @@ const DualViewerContainer = () => {
                                     {currentFile.metadata?.seriesNumber || 'N/A'}
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Series Description" span={2}>
-                                    {currentFile.metadata?.seriesDescription || 'N/A'}
+                                    <TruncatedText text={currentFile.metadata?.seriesDescription} maxLength={60} />
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Series Instance UID" span={2}>
-                                    <Text className={styles.uidText}>
-                                      {currentFile.metadata?.seriesInstanceUID || 'N/A'}
-                                    </Text>
+                                    <Tooltip title={currentFile.metadata?.seriesInstanceUID || 'N/A'} placement="topLeft">
+                                      <Text className={styles.uidText} style={{ cursor: 'help' }}>
+                                        {currentFile.metadata?.seriesInstanceUID || 'N/A'}
+                                      </Text>
+                                    </Tooltip>
                                   </Descriptions.Item>
 
                                   {/* Image Information */}
@@ -321,9 +375,11 @@ const DualViewerContainer = () => {
                                       : 'N/A'}
                                   </Descriptions.Item>
                                   <Descriptions.Item label="SOP Instance UID" span={2}>
-                                    <Text className={styles.uidText}>
-                                      {currentFile.metadata?.sopInstanceUID || 'N/A'}
-                                    </Text>
+                                    <Tooltip title={currentFile.metadata?.sopInstanceUID || 'N/A'} placement="topLeft">
+                                      <Text className={styles.uidText} style={{ cursor: 'help' }}>
+                                        {currentFile.metadata?.sopInstanceUID || 'N/A'}
+                                      </Text>
+                                    </Tooltip>
                                   </Descriptions.Item>
 
                                   {/* Institution Information */}
@@ -333,17 +389,17 @@ const DualViewerContainer = () => {
                                     <>
                                       {currentFile.metadata?.institutionName && (
                                         <Descriptions.Item label="Institution Name" span={2}>
-                                          {currentFile.metadata.institutionName}
+                                          <TruncatedText text={currentFile.metadata.institutionName} maxLength={50} />
                                         </Descriptions.Item>
                                       )}
                                       {currentFile.metadata?.referringPhysicianName && (
                                         <Descriptions.Item label="Referring Physician" span={2}>
-                                          {currentFile.metadata.referringPhysicianName}
+                                          <TruncatedText text={currentFile.metadata.referringPhysicianName} maxLength={50} />
                                         </Descriptions.Item>
                                       )}
                                       {currentFile.metadata?.performingPhysicianName && (
                                         <Descriptions.Item label="Performing Physician" span={2}>
-                                          {currentFile.metadata.performingPhysicianName}
+                                          <TruncatedText text={currentFile.metadata.performingPhysicianName} maxLength={50} />
                                         </Descriptions.Item>
                                       )}
                                     </>
@@ -382,8 +438,14 @@ const DualViewerContainer = () => {
                     <FileImageOutlined className={styles.navigationIcon} />
                     <Select
                       className={styles.fileSelect}
-                      value={currentFileIndex}
-                      onChange={handleSelectFile}
+                      value={rightFileIndex}
+                      onChange={(value) => {
+                        if (sync.isEnabled && sync.syncScroll) {
+                          dispatch(setCurrentFileIndex(value));
+                        } else {
+                          dispatch(setRightFileIndex(value));
+                        }
+                      }}
                       disabled={!hasMultipleFiles}
                       placeholder="Select a file"
                       size="small"
@@ -394,7 +456,7 @@ const DualViewerContainer = () => {
                             <FileImageOutlined
                               style={{ color: file.status === 'complete' ? '#52c41a' : '#faad14' }}
                             />
-                            <span className={index === currentFileIndex ? styles.fileNameActive : styles.fileNameInactive}>
+                            <span className={index === rightFileIndex ? styles.fileNameActive : styles.fileNameInactive}>
                               {file.fileName}
                             </span>
                             {file.status === 'complete' && (
@@ -409,7 +471,7 @@ const DualViewerContainer = () => {
                     />
                     {hasMultipleFiles && (
                       <Text className={styles.fileCounterText}>
-                        {currentFileIndex + 1} / {originalFiles.length}
+                        {rightFileIndex + 1} / {originalFiles.length}
                       </Text>
                     )}
                     {hasMultipleFiles && (
@@ -472,8 +534,14 @@ const DualViewerContainer = () => {
                           const scrollPercentage = scrollTop / scrollHeight;
                           const newIndex = Math.round(scrollPercentage * (originalFiles.length - 1));
                           const clampedIndex = Math.max(0, Math.min(originalFiles.length - 1, newIndex));
-                          if (clampedIndex !== currentFileIndex) {
-                            dispatch(setCurrentFileIndex(clampedIndex));
+                          if (sync.isEnabled && sync.syncScroll) {
+                            if (clampedIndex !== currentFileIndex) {
+                              dispatch(setCurrentFileIndex(clampedIndex));
+                            }
+                          } else {
+                            if (clampedIndex !== rightFileIndex) {
+                              dispatch(setRightFileIndex(clampedIndex));
+                            }
                           }
                         }
                       }}
@@ -510,10 +578,14 @@ const DualViewerContainer = () => {
                                 >
                                   {/* Patient Information */}
                                   <Descriptions.Item label="Patient Name" span={2}>
-                                    <Tag color="success">{currentDeidentifiedFile.metadata?.patientName || 'N/A'}</Tag>
+                                    <Tag color="success">
+                                      <TruncatedText text={currentDeidentifiedFile.metadata?.patientName} maxLength={50} />
+                                    </Tag>
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Patient ID">
-                                    <Tag color="success">{currentDeidentifiedFile.metadata?.patientID || 'N/A'}</Tag>
+                                    <Tag color="success">
+                                      <TruncatedText text={currentDeidentifiedFile.metadata?.patientID} maxLength={30} />
+                                    </Tag>
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Patient Birth Date">
                                     {formatDicomDate(currentDeidentifiedFile.metadata?.patientBirthDate) || 'N/A'}
@@ -533,15 +605,17 @@ const DualViewerContainer = () => {
                                     {formatDicomTime(currentDeidentifiedFile.metadata?.studyTime)}
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Study Description" span={2}>
-                                    {currentDeidentifiedFile.metadata?.studyDescription || 'N/A'}
+                                    <TruncatedText text={currentDeidentifiedFile.metadata?.studyDescription} maxLength={60} />
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Accession Number">
-                                    {currentDeidentifiedFile.metadata?.accessionNumber || 'N/A'}
+                                    <TruncatedText text={currentDeidentifiedFile.metadata?.accessionNumber} maxLength={30} />
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Study Instance UID" span={2}>
-                                    <Text className={styles.uidText}>
-                                      {currentDeidentifiedFile.metadata?.studyInstanceUID || 'N/A'}
-                                    </Text>
+                                    <Tooltip title={currentDeidentifiedFile.metadata?.studyInstanceUID || 'N/A'} placement="topLeft">
+                                      <Text className={styles.uidText} style={{ cursor: 'help' }}>
+                                        {currentDeidentifiedFile.metadata?.studyInstanceUID || 'N/A'}
+                                      </Text>
+                                    </Tooltip>
                                   </Descriptions.Item>
 
                                   {/* Series Information */}
@@ -552,12 +626,14 @@ const DualViewerContainer = () => {
                                     {currentDeidentifiedFile.metadata?.seriesNumber || 'N/A'}
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Series Description" span={2}>
-                                    {currentDeidentifiedFile.metadata?.seriesDescription || 'N/A'}
+                                    <TruncatedText text={currentDeidentifiedFile.metadata?.seriesDescription} maxLength={60} />
                                   </Descriptions.Item>
                                   <Descriptions.Item label="Series Instance UID" span={2}>
-                                    <Text className={styles.uidText}>
-                                      {currentDeidentifiedFile.metadata?.seriesInstanceUID || 'N/A'}
-                                    </Text>
+                                    <Tooltip title={currentDeidentifiedFile.metadata?.seriesInstanceUID || 'N/A'} placement="topLeft">
+                                      <Text className={styles.uidText} style={{ cursor: 'help' }}>
+                                        {currentDeidentifiedFile.metadata?.seriesInstanceUID || 'N/A'}
+                                      </Text>
+                                    </Tooltip>
                                   </Descriptions.Item>
 
                                   {/* Image Information */}
@@ -575,9 +651,11 @@ const DualViewerContainer = () => {
                                       : 'N/A'}
                                   </Descriptions.Item>
                                   <Descriptions.Item label="SOP Instance UID" span={2}>
-                                    <Text className={styles.uidText}>
-                                      {currentDeidentifiedFile.metadata?.sopInstanceUID || 'N/A'}
-                                    </Text>
+                                    <Tooltip title={currentDeidentifiedFile.metadata?.sopInstanceUID || 'N/A'} placement="topLeft">
+                                      <Text className={styles.uidText} style={{ cursor: 'help' }}>
+                                        {currentDeidentifiedFile.metadata?.sopInstanceUID || 'N/A'}
+                                      </Text>
+                                    </Tooltip>
                                   </Descriptions.Item>
 
                                   {/* Institution Information */}
@@ -587,17 +665,17 @@ const DualViewerContainer = () => {
                                     <>
                                       {currentDeidentifiedFile.metadata?.institutionName && (
                                         <Descriptions.Item label="Institution Name" span={2}>
-                                          {currentDeidentifiedFile.metadata.institutionName}
+                                          <TruncatedText text={currentDeidentifiedFile.metadata.institutionName} maxLength={50} />
                                         </Descriptions.Item>
                                       )}
                                       {currentDeidentifiedFile.metadata?.referringPhysicianName && (
                                         <Descriptions.Item label="Referring Physician" span={2}>
-                                          {currentDeidentifiedFile.metadata.referringPhysicianName}
+                                          <TruncatedText text={currentDeidentifiedFile.metadata.referringPhysicianName} maxLength={50} />
                                         </Descriptions.Item>
                                       )}
                                       {currentDeidentifiedFile.metadata?.performingPhysicianName && (
                                         <Descriptions.Item label="Performing Physician" span={2}>
-                                          {currentDeidentifiedFile.metadata.performingPhysicianName}
+                                          <TruncatedText text={currentDeidentifiedFile.metadata.performingPhysicianName} maxLength={50} />
                                         </Descriptions.Item>
                                       )}
                                     </>

@@ -94,11 +94,48 @@ const dicomSlice = createSlice({
       state.deidentifiedFiles = action.payload;
     },
 
-    updateDeidentificationOptions: (state, action: PayloadAction<Partial<DeidentifyOptions>>) => {
-      state.deidentificationOptions = {
-        ...state.deidentificationOptions,
-        ...action.payload,
-      };
+    updateDeidentificationOptions: (state, action: PayloadAction<Partial<DeidentifyOptions> | DeidentifyOptions>) => {
+      const payload = action.payload;
+      console.log('Redux reducer: updateDeidentificationOptions called with payload:', payload);
+      console.log('Redux reducer: Current state before update:', state.deidentificationOptions);
+      
+      // Check if payload has all required boolean fields (full object)
+      const hasAllBooleans = 
+        typeof payload.removePatientName === 'boolean' &&
+        typeof payload.removePatientID === 'boolean' &&
+        typeof payload.removeDates === 'boolean' &&
+        typeof payload.shiftDates === 'boolean' &&
+        typeof payload.removeInstitution === 'boolean' &&
+        typeof payload.removePhysicians === 'boolean' &&
+        typeof payload.anonymizeUIDs === 'boolean' &&
+        typeof payload.keepSeriesInfo === 'boolean';
+      
+      console.log('Redux reducer: hasAllBooleans:', hasAllBooleans);
+      
+      if (hasAllBooleans) {
+        // Full object - replace entirely
+        console.log('Redux reducer: Replacing entire deidentificationOptions');
+        state.deidentificationOptions = {
+          removePatientName: payload.removePatientName ?? false,
+          removePatientID: payload.removePatientID ?? false,
+          removeDates: payload.removeDates ?? false,
+          shiftDates: payload.shiftDates ?? false,
+          dateShiftDays: payload.dateShiftDays,
+          removeInstitution: payload.removeInstitution ?? false,
+          removePhysicians: payload.removePhysicians ?? false,
+          anonymizeUIDs: payload.anonymizeUIDs ?? false,
+          keepSeriesInfo: payload.keepSeriesInfo ?? false,
+        };
+      } else {
+        // Partial object - merge with existing
+        console.log('Redux reducer: Merging partial update');
+        state.deidentificationOptions = {
+          ...state.deidentificationOptions,
+          ...payload,
+        };
+      }
+      
+      console.log('Redux reducer: Updated deidentificationOptions:', JSON.parse(JSON.stringify(state.deidentificationOptions)));
     },
 
     setProcessing: (state, action: PayloadAction<boolean>) => {

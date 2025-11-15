@@ -3,7 +3,7 @@
  * Allows users to toggle synchronization settings between dual viewers
  */
 
-import { Card, Switch, Space, Typography, Divider, Tooltip, Row, Col } from 'antd';
+import { Card, Switch, Space, Typography, Divider, Tooltip, Row, Col, Button } from 'antd';
 import {
   SyncOutlined,
   ArrowsAltOutlined,
@@ -11,21 +11,26 @@ import {
   ColumnWidthOutlined,
   ReloadOutlined,
   FileImageOutlined,
+  UpOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import { useAppDispatch, useAppSelector } from '@store';
 import { toggleSync, updateSyncSettings, resetViewports } from '@store/slices/viewerSlice';
+import { useState } from 'react';
 
 const { Text, Title } = Typography;
 
 const ViewerSyncControls = () => {
   const dispatch = useAppDispatch();
   const { sync } = useAppSelector((state) => state.viewer);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleToggleSync = () => {
     dispatch(toggleSync());
   };
 
   const handleSyncSettingChange = (setting: string, value: boolean) => {
+    console.log('Updating sync setting:', setting, 'to', value, 'Current sync state:', sync);
     dispatch(updateSyncSettings({ [setting]: value }));
   };
 
@@ -59,16 +64,29 @@ const ViewerSyncControls = () => {
             </Space>
           </Col>
           <Col>
-            <Tooltip title="Reset all viewports">
-              <ReloadOutlined
-                onClick={handleResetViewports}
-                style={{ color: '#999', cursor: 'pointer', fontSize: 16 }}
-              />
-            </Tooltip>
+            <Space>
+              <Tooltip title="Reset all viewports">
+                <ReloadOutlined
+                  onClick={handleResetViewports}
+                  style={{ color: '#999', cursor: 'pointer', fontSize: 16 }}
+                />
+              </Tooltip>
+              <Tooltip title={isCollapsed ? 'Expand' : 'Collapse'}>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={isCollapsed ? <DownOutlined /> : <UpOutlined />}
+                  onClick={() => setIsCollapsed(!isCollapsed)}
+                  style={{ color: '#999' }}
+                />
+              </Tooltip>
+            </Space>
           </Col>
         </Row>
 
-        <Divider style={{ margin: '8px 0', borderColor: '#333' }} />
+        {!isCollapsed && (
+          <>
+            <Divider style={{ margin: '8px 0', borderColor: '#333' }} />
 
         {/* Master Sync Toggle */}
         <Row justify="space-between" align="middle">
@@ -173,12 +191,14 @@ const ViewerSyncControls = () => {
           </Row>
         </Space>
 
-        {/* Info Text */}
-        <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 8 }}>
-          {sync.isEnabled
-            ? 'Viewers are synchronized. Interactions on one viewer will affect the other.'
-            : 'Synchronization is disabled. Viewers can be controlled independently.'}
-        </Text>
+            {/* Info Text */}
+            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 8, color: '#fff' }}>
+              {sync.isEnabled
+                ? 'Viewers are synchronized. Interactions on one viewer will affect the other.'
+                : 'Synchronization is disabled. Viewers can be controlled independently.'}
+            </Text>
+          </>
+        )}
       </Space>
     </Card>
   );

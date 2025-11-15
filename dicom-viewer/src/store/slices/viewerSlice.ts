@@ -21,6 +21,7 @@ const initialState: ViewerState = {
       measurements: [],
       annotations: [],
     },
+    fileIndex: undefined, // Will use dicom.currentFileIndex when undefined
   },
   rightViewer: {
     viewport: { ...initialViewport },
@@ -29,6 +30,7 @@ const initialState: ViewerState = {
       measurements: [],
       annotations: [],
     },
+    fileIndex: undefined, // Will use dicom.currentFileIndex when undefined
   },
   sync: {
     isEnabled: true,
@@ -55,6 +57,7 @@ const viewerSlice = createSlice({
       if (state.sync.isEnabled) {
         const updates: Partial<Viewport> = {};
 
+        // Only sync if the specific sync setting is enabled
         if (state.sync.syncZoom && action.payload.scale !== undefined) {
           updates.scale = action.payload.scale;
         }
@@ -75,10 +78,13 @@ const viewerSlice = createSlice({
           updates.sliceIndex = action.payload.sliceIndex;
         }
 
-        state.rightViewer.viewport = {
-          ...state.rightViewer.viewport,
-          ...updates,
-        };
+        // Only update right viewer if there are updates to apply
+        if (Object.keys(updates).length > 0) {
+          state.rightViewer.viewport = {
+            ...state.rightViewer.viewport,
+            ...updates,
+          };
+        }
       }
     },
 
@@ -93,6 +99,7 @@ const viewerSlice = createSlice({
       if (state.sync.isEnabled) {
         const updates: Partial<Viewport> = {};
 
+        // Only sync if the specific sync setting is enabled
         if (state.sync.syncZoom && action.payload.scale !== undefined) {
           updates.scale = action.payload.scale;
         }
@@ -113,10 +120,13 @@ const viewerSlice = createSlice({
           updates.sliceIndex = action.payload.sliceIndex;
         }
 
-        state.leftViewer.viewport = {
-          ...state.leftViewer.viewport,
-          ...updates,
-        };
+        // Only update left viewer if there are updates to apply
+        if (Object.keys(updates).length > 0) {
+          state.leftViewer.viewport = {
+            ...state.leftViewer.viewport,
+            ...updates,
+          };
+        }
       }
     },
 
@@ -126,10 +136,12 @@ const viewerSlice = createSlice({
     },
 
     updateSyncSettings: (state, action: PayloadAction<Partial<ViewerSyncState>>) => {
+      console.log('updateSyncSettings called with:', action.payload);
       state.sync = {
         ...state.sync,
         ...action.payload,
       };
+      console.log('Updated sync state:', state.sync);
     },
 
     // Reset Viewports
@@ -170,6 +182,23 @@ const viewerSlice = createSlice({
         state.rightViewer.viewport.sliceIndex = action.payload;
       }
     },
+
+    // File Index Management
+    setLeftFileIndex: (state, action: PayloadAction<number>) => {
+      state.leftViewer.fileIndex = action.payload;
+      // If sync is enabled, also update right viewer
+      if (state.sync.isEnabled && state.sync.syncScroll) {
+        state.rightViewer.fileIndex = action.payload;
+      }
+    },
+
+    setRightFileIndex: (state, action: PayloadAction<number>) => {
+      state.rightViewer.fileIndex = action.payload;
+      // If sync is enabled, also update left viewer
+      if (state.sync.isEnabled && state.sync.syncScroll) {
+        state.leftViewer.fileIndex = action.payload;
+      }
+    },
   },
 });
 
@@ -184,6 +213,8 @@ export const {
   nextSlice,
   previousSlice,
   setSliceIndex,
+  setLeftFileIndex,
+  setRightFileIndex,
 } = viewerSlice.actions;
 
 export default viewerSlice.reducer;

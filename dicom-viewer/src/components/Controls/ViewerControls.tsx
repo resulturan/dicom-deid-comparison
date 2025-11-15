@@ -15,7 +15,11 @@ import {
   PlusOutlined,
   MinusOutlined,
   DownOutlined,
+  UpOutlined,
+  DownOutlined as DownOutlinedIcon,
 } from '@ant-design/icons';
+import { useState } from 'react';
+import styles from './ViewerControls.module.scss';
 
 interface ViewerControlsProps {
   onToolChange?: (tool: string) => void;
@@ -32,6 +36,8 @@ const ViewerControls = ({
   activeTool = 'WindowLevel',
   currentZoom = 1.0
 }: ViewerControlsProps) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   const handleToolClick = (tool: string) => {
     onToolChange?.(tool);
   };
@@ -63,49 +69,85 @@ const ViewerControls = ({
   ];
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        top: 16,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        background: 'rgba(124, 58, 237, 0.9)',
-        padding: '10px 20px',
-        borderRadius: '12px',
-        zIndex: 100,
-        backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(166, 127, 205, 0.5)',
-        boxShadow: '0 4px 16px rgba(124, 58, 237, 0.3)',
-      }}
-    >
-      <Space split={<Divider type="vertical" style={{ background: 'rgba(166, 127, 205, 0.5)', margin: '0 8px' }} />} size="middle">
-        {/* Tools */}
-        <Space size="small">
-          {tools.map((tool) => (
-            <Tooltip key={tool.name} title={tool.tooltip} placement="top">
+    <div className={`${styles.toolbar} ${isCollapsed ? styles.collapsed : ''}`}>
+      <div className={styles.toolbarContent}>
+        <Space split={<Divider type="vertical" className={styles.divider} />} size="middle">
+          {/* Tools */}
+          <Space size="small">
+            {tools.map((tool) => (
+              <Tooltip key={tool.name} title={tool.tooltip} placement="top">
+                <Button
+                  type={activeTool === tool.name ? 'primary' : 'default'}
+                  icon={tool.icon}
+                  size="small"
+                  onClick={() => handleToolClick(tool.name)}
+                  className={styles.toolButton}
+                  style={{
+                    background: activeTool === tool.name ? undefined : 'rgba(255, 255, 255, 0.15)',
+                    borderColor: activeTool === tool.name ? undefined : 'rgba(166, 127, 205, 0.5)',
+                    color: activeTool === tool.name ? undefined : '#f3edf7',
+                  }}
+                />
+              </Tooltip>
+            ))}
+          </Space>
+
+          {/* Zoom Controls */}
+          <Space size="small">
+            <Tooltip title="Zoom Out (-)" placement="top">
               <Button
-                type={activeTool === tool.name ? 'primary' : 'default'}
-                icon={tool.icon}
+                icon={<MinusOutlined />}
                 size="small"
-                onClick={() => handleToolClick(tool.name)}
+                onClick={handleZoomOut}
+                disabled={currentZoom <= 0.1}
+                className={styles.toolButton}
                 style={{
-                  background: activeTool === tool.name ? undefined : 'rgba(255, 255, 255, 0.15)',
-                  borderColor: activeTool === tool.name ? undefined : 'rgba(166, 127, 205, 0.5)',
-                  color: activeTool === tool.name ? undefined : '#f3edf7',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  borderColor: 'rgba(166, 127, 205, 0.5)',
+                  color: '#f3edf7',
                 }}
               />
             </Tooltip>
-          ))}
-        </Space>
 
-        {/* Zoom Controls */}
-        <Space size="small">
-          <Tooltip title="Zoom Out (-)" placement="top">
+            <Dropdown menu={{ items: zoomPresets }} placement="top" trigger={['click']}>
+              <Button
+                size="small"
+                className={styles.zoomButton}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  borderColor: 'rgba(166, 127, 205, 0.6)',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  minWidth: 60,
+                }}
+              >
+                {(currentZoom * 100).toFixed(0)}% <DownOutlined style={{ fontSize: 10 }} />
+              </Button>
+            </Dropdown>
+
+            <Tooltip title="Zoom In (+)" placement="top">
+              <Button
+                icon={<PlusOutlined />}
+                size="small"
+                onClick={handleZoomIn}
+                disabled={currentZoom >= 10}
+                className={styles.toolButton}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  borderColor: 'rgba(166, 127, 205, 0.5)',
+                  color: '#f3edf7',
+                }}
+              />
+            </Tooltip>
+          </Space>
+
+          {/* Reset */}
+          <Tooltip title="Reset Viewport (Ctrl+Shift+R)" placement="top">
             <Button
-              icon={<MinusOutlined />}
+              icon={<ReloadOutlined />}
               size="small"
-              onClick={handleZoomOut}
-              disabled={currentZoom <= 0.1}
+              onClick={onReset}
+              className={styles.toolButton}
               style={{
                 background: 'rgba(255, 255, 255, 0.15)',
                 borderColor: 'rgba(166, 127, 205, 0.5)',
@@ -113,51 +155,15 @@ const ViewerControls = ({
               }}
             />
           </Tooltip>
-
-          <Dropdown menu={{ items: zoomPresets }} placement="top" trigger={['click']}>
-            <Button
-              size="small"
-              style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                borderColor: 'rgba(166, 127, 205, 0.6)',
-                color: '#ffffff',
-                fontWeight: 600,
-                minWidth: 60,
-              }}
-            >
-              {(currentZoom * 100).toFixed(0)}% <DownOutlined style={{ fontSize: 10 }} />
-            </Button>
-          </Dropdown>
-
-          <Tooltip title="Zoom In (+)" placement="top">
-            <Button
-              icon={<PlusOutlined />}
-              size="small"
-              onClick={handleZoomIn}
-              disabled={currentZoom >= 10}
-              style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                borderColor: 'rgba(166, 127, 205, 0.5)',
-                color: '#f3edf7',
-              }}
-            />
-          </Tooltip>
         </Space>
-
-        {/* Reset */}
-        <Tooltip title="Reset Viewport (Ctrl+Shift+R)" placement="top">
-          <Button
-            icon={<ReloadOutlined />}
-            size="small"
-            onClick={onReset}
-            style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              borderColor: '#555',
-              color: '#ddd',
-            }}
-          />
-        </Tooltip>
-      </Space>
+      </div>
+      <Button
+        className={styles.collapseButton}
+        icon={isCollapsed ? <DownOutlinedIcon /> : <UpOutlined />}
+        size="small"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        title={isCollapsed ? 'Expand toolbar' : 'Collapse toolbar'}
+      />
     </div>
   );
 };

@@ -73,11 +73,17 @@
   box-shadow: 0 2px 4px rgba($purple-medium, 0.3);
   font-weight: $font-weight-semibold;
   min-width: 30px;
-  transition: all $transition-fast;
+  transition: all 0.3s ease;
 
-  &:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 8px rgba($purple-medium, 0.5);
+  &:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 12px rgba($purple-medium, 0.6);
+    background: linear-gradient(135deg, $purple-dark 0%, $purple-darker 100%);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 2px 4px rgba($purple-medium, 0.3);
   }
 }
 
@@ -155,7 +161,7 @@
 }
 
 .metadataContent {
-  max-height: 300px;
+  max-height: 400px;
   overflow-y: auto;
   background: rgba($purple-light, 0.5);
   backdrop-filter: blur(8px);
@@ -174,6 +180,10 @@
     :global(.ant-descriptions-item-content) {
       background: transparent;
       color: $text-primary;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 }
@@ -183,6 +193,11 @@
   font-family: monospace;
   word-break: break-all;
   color: $purple-medium;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .emptyStateIcon {

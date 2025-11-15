@@ -110,10 +110,12 @@ export interface ViewerState {
   leftViewer: {
     viewport: Viewport;
     tools: ToolState;
+    fileIndex?: number; // Separate file index for left viewer when sync is disabled
   };
   rightViewer: {
     viewport: Viewport;
     tools: ToolState;
+    fileIndex?: number; // Separate file index for right viewer when sync is disabled
   };
   sync: ViewerSyncState;
 }

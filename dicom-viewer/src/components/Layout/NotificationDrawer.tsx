@@ -15,6 +15,7 @@ import {
 import { useAppDispatch, useAppSelector } from '@store';
 import { removeNotification, clearNotifications, toggleNotificationDrawer } from '@store/slices/uiSlice';
 import type { Notification } from '@store/types';
+import styles from './NotificationDrawer.module.scss';
 
 const { Text, Title } = Typography;
 
@@ -72,14 +73,15 @@ const NotificationDrawer = () => {
 
   return (
     <Drawer
+      className={styles.drawer}
       title={
         <Space>
-          <BellOutlined />
-          <Title level={5} style={{ margin: 0 }}>
+          <BellOutlined style={{ color: '#ffffff' }} />
+          <Title level={5} style={{ margin: 0, color: '#ffffff' }}>
             Notifications
           </Title>
           {totalCount > 0 && (
-            <Badge count={totalCount} showZero style={{ backgroundColor: '#1890ff' }} />
+            <Badge count={totalCount} showZero style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }} />
           )}
         </Space>
       }
@@ -89,7 +91,7 @@ const NotificationDrawer = () => {
       onClose={() => dispatch(toggleNotificationDrawer())}
       extra={
         totalCount > 0 && (
-          <Button type="link" danger size="small" onClick={handleClearAll}>
+          <Button type="link" danger size="small" onClick={handleClearAll} style={{ color: '#ffffff' }}>
             Clear All
           </Button>
         )
@@ -104,15 +106,7 @@ const NotificationDrawer = () => {
       ) : (
         <>
           {/* Summary Section */}
-          <div
-            style={{
-              padding: '12px 16px',
-              background: 'linear-gradient(135deg, #f0f2f5 0%, #e6f7ff 100%)',
-              borderRadius: 8,
-              marginBottom: 16,
-              border: '1px solid #d9d9d9',
-            }}
-          >
+          <div className={styles.summarySection}>
             <Space direction="vertical" size="small" style={{ width: '100%' }}>
               <Text strong style={{ fontSize: 13 }}>
                 Summary
@@ -147,10 +141,7 @@ const NotificationDrawer = () => {
             dataSource={notifications}
             renderItem={(notification) => (
               <List.Item
-                style={{
-                  padding: '12px 0',
-                  borderBottom: '1px solid #f0f0f0',
-                }}
+                className={styles.notificationItem}
                 actions={[
                   <Button
                     type="text"

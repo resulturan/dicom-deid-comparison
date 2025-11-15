@@ -14,6 +14,7 @@ import { useDicomUpload } from '@hooks/useDicomUpload';
 import { formatFileSize } from '@services/dicom/validator';
 import { formatDicomDate } from '@services/dicom/parser';
 import { useRef, useEffect } from 'react';
+import styles from './Styles.module.scss';
 
 const { Dragger } = Upload;
 const { Title, Text } = Typography;
@@ -103,7 +104,7 @@ const DicomUploader = () => {
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <FileImageOutlined style={{ fontSize: 20, color: '#4096ff' }} />
-          <span style={{ fontSize: 16, fontWeight: 600 }}>Upload DICOM Files</span>
+          <span style={{ fontSize: 16, fontWeight: 600, color: '#ffffff' }}>Upload DICOM Files</span>
         </div>
       }
       placement="right"
@@ -114,12 +115,16 @@ const DicomUploader = () => {
         header: {
           background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
           borderBottom: '1px solid rgba(64, 150, 255, 0.3)',
+          color: '#ffffff',
         },
         body: {
           background: '#0a0a0a',
           padding: '24px',
+          color: '#ffffff',
         },
+
       }}
+      className={styles.Drawer}
     >
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         {/* Upload Area */}
@@ -179,7 +184,7 @@ const DicomUploader = () => {
                   title={<span style={{ color: '#999' }}>Processing</span>}
                   value={statistics.processing}
                   valueStyle={{ color: '#1890ff', fontWeight: 600 }}
-                  prefix={<LoadingOutlined />}
+                  prefix={statistics.processing > 0 ? <LoadingOutlined spin /> : null}
                 />
               </Col>
               <Col span={6}>

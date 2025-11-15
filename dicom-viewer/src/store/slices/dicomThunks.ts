@@ -27,15 +27,9 @@ export const processDicomFile = createAsyncThunk(
       // Validate file
       const validation = await validateFile(file);
       if (!validation.valid) {
-        dispatch(updateFileStatus({ id, status: 'error', progress: 0 }));
-        dispatch(
-          addNotification({
-            type: 'error',
-            message: 'File validation failed',
-            description: validation.error || ERROR_MESSAGES.INVALID_FILE_TYPE,
-          })
-        );
-        return rejectWithValue(validation.error);
+      dispatch(updateFileStatus({ id, status: 'error', progress: 0 }));
+      // Don't add individual notifications - will be batched
+      return rejectWithValue(validation.error);
       }
 
       // Update status to processing
@@ -53,24 +47,12 @@ export const processDicomFile = createAsyncThunk(
         })
       );
 
-      dispatch(
-        addNotification({
-          type: 'success',
-          message: 'File processed successfully',
-          description: `${file.name} has been loaded`,
-        })
-      );
+      // Don't add individual notifications here - they will be batched in useDicomUpload
 
       return { id, metadata, imageData };
     } catch (error) {
       dispatch(updateFileStatus({ id, status: 'error', progress: 0 }));
-      dispatch(
-        addNotification({
-          type: 'error',
-          message: 'Failed to process DICOM file',
-          description: error instanceof Error ? error.message : ERROR_MESSAGES.PARSING_FAILED,
-        })
-      );
+      // Don't add individual notifications - will be batched
       return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
     }
   }
@@ -138,6 +120,21 @@ export const deidentifyAllFiles = createAsyncThunk(
     try {
       const state = getState() as any;
       const { originalFiles, deidentificationOptions } = state.dicom;
+
+      // Log current options for debugging
+      console.log('=== deidentifyAllFiles called ===');
+      console.log('Redux state deidentificationOptions:', JSON.parse(JSON.stringify(deidentificationOptions)));
+      console.log('Options type check:', {
+        removePatientName: typeof deidentificationOptions.removePatientName,
+        removePatientID: typeof deidentificationOptions.removePatientID,
+        removeDates: typeof deidentificationOptions.removeDates,
+        shiftDates: typeof deidentificationOptions.shiftDates,
+        dateShiftDays: deidentificationOptions.dateShiftDays,
+        removeInstitution: typeof deidentificationOptions.removeInstitution,
+        removePhysicians: typeof deidentificationOptions.removePhysicians,
+        anonymizeUIDs: typeof deidentificationOptions.anonymizeUIDs,
+        keepSeriesInfo: typeof deidentificationOptions.keepSeriesInfo,
+      });
 
       if (originalFiles.length === 0) {
         dispatch(

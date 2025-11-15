@@ -146,7 +146,7 @@ const MetadataComparison = ({ originalMetadata, deidentifiedMetadata }: Metadata
       key: 'originalValue',
       width: '35%',
       render: (value: string | number | Record<string, any> | undefined) => (
-        <Text style={{ color: '#ccc' }}>
+        <Text style={{ color: '#000' }}>
           {value !== undefined ? (typeof value === 'object' ? JSON.stringify(value) : String(value)) : '-'}
         </Text>
       ),
@@ -166,13 +166,13 @@ const MetadataComparison = ({ originalMetadata, deidentifiedMetadata }: Metadata
         if (record.status === 'modified') {
           return (
             <Space>
-              <Text style={{ color: '#ccc' }}>{displayValue}</Text>
+              <Text style={{ color: '#000' }}>{displayValue}</Text>
               <Tag color="warning">MODIFIED</Tag>
             </Space>
           );
         }
 
-        return <Text style={{ color: '#ccc' }}>{displayValue}</Text>;
+        return <Text style={{ color: '#000' }}>{displayValue}</Text>;
       },
     },
   ];
@@ -241,7 +241,7 @@ const MetadataComparison = ({ originalMetadata, deidentifiedMetadata }: Metadata
       />
 
       {/* Legend */}
-      <div style={{ marginTop: 16, padding: '12px', background: '#1a1a1a', borderRadius: 4 }}>
+      <div style={{ marginTop: 16, padding: '12px', background: '#fff', borderRadius: 4 }}>
         <Text type="secondary" style={{ fontSize: 12, marginRight: 16 }}>
           Legend:
         </Text>

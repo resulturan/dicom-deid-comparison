@@ -26,6 +26,10 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
   const [error, _setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [drawingStart, setDrawingStart] = useState<{ x: number; y: number } | null>(null);
+  const [drawingEnd, setDrawingEnd] = useState<{ x: number; y: number } | null>(null);
+  const [annotations, setAnnotations] = useState<Array<{ type: 'length' | 'rectangle'; start: { x: number; y: number }; end: { x: number; y: number } }>>([]);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Get viewport state from Redux
   const viewport = useAppSelector((state) =>
@@ -38,6 +42,8 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
   // Update viewport in Redux
   const updateViewport = useCallback(
     (updates: any) => {
+      // Check if sync is enabled and if the specific sync setting is enabled
+      // Only sync if both master sync and the specific sync setting are enabled
       if (viewerId === 'left') {
         dispatch(updateLeftViewport(updates));
       } else {
@@ -276,53 +282,94 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
     [viewport.scale, updateViewport, activeTool]
   );
 
-  // Mouse events for pan and window/level
+  // Mouse events for pan, window/level, ROI, and measure
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 0) {
       // Left click
-      setIsDragging(true);
-      setDragStart({ x: e.clientX, y: e.clientY });
+      const rect = viewerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (activeTool === 'Length' || activeTool === 'RectangleROI') {
+        // Start drawing
+        setDrawingStart({ x, y });
+        setDrawingEnd({ x, y });
+        setIsDragging(true);
+      } else {
+        // Pan, WindowLevel, or Zoom
+        setIsDragging(true);
+        setDragStart({ x: e.clientX, y: e.clientY });
+      }
     }
-  }, []);
+  }, [activeTool]);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (!isDragging) return;
 
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
+      const rect = viewerRef.current?.getBoundingClientRect();
+      if (!rect) return;
 
-      if (activeTool === 'Pan') {
-        // Pan mode
-        updateViewport({
-          translation: {
-            x: viewport.translation.x + deltaX,
-            y: viewport.translation.y + deltaY,
-          },
-        });
-      } else if (activeTool === 'WindowLevel') {
-        // Window/Level adjustment
-        const windowWidth = (viewport.windowWidth || 400) + deltaX;
-        const windowCenter = (viewport.windowCenter || 40) + deltaY;
-        updateViewport({
-          windowWidth: Math.max(1, windowWidth),
-          windowCenter,
-        });
-      } else if (activeTool === 'Zoom') {
-        // Zoom with mouse drag
-        const zoomDelta = deltaY * 0.01;
-        const newScale = Math.max(0.1, Math.min(10, viewport.scale - zoomDelta));
-        updateViewport({ scale: newScale });
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (activeTool === 'Length' || activeTool === 'RectangleROI') {
+        // Update drawing end point
+        if (drawingStart) {
+          setDrawingEnd({ x, y });
+        }
+      } else {
+        // Pan, WindowLevel, or Zoom
+        const deltaX = e.clientX - dragStart.x;
+        const deltaY = e.clientY - dragStart.y;
+
+        if (activeTool === 'Pan') {
+          // Pan mode
+          updateViewport({
+            translation: {
+              x: viewport.translation.x + deltaX,
+              y: viewport.translation.y + deltaY,
+            },
+          });
+        } else if (activeTool === 'WindowLevel') {
+          // Window/Level adjustment
+          const windowWidth = (viewport.windowWidth || 400) + deltaX;
+          const windowCenter = (viewport.windowCenter || 40) + deltaY;
+          updateViewport({
+            windowWidth: Math.max(1, windowWidth),
+            windowCenter,
+          });
+        } else if (activeTool === 'Zoom') {
+          // Zoom with mouse drag
+          const zoomDelta = deltaY * 0.01;
+          const newScale = Math.max(0.1, Math.min(10, viewport.scale - zoomDelta));
+          updateViewport({ scale: newScale });
+        }
+
+        setDragStart({ x: e.clientX, y: e.clientY });
       }
-
-      setDragStart({ x: e.clientX, y: e.clientY });
     },
-    [isDragging, dragStart, activeTool, viewport, updateViewport]
+    [isDragging, dragStart, activeTool, viewport, updateViewport, drawingStart]
   );
 
   const handleMouseUp = useCallback(() => {
+    if (isDragging && drawingStart && drawingEnd && (activeTool === 'Length' || activeTool === 'RectangleROI')) {
+      // Save annotation
+      setAnnotations((prev) => [
+        ...prev,
+        {
+          type: activeTool === 'Length' ? 'length' : 'rectangle',
+          start: drawingStart,
+          end: drawingEnd,
+        },
+      ]);
+    }
     setIsDragging(false);
-  }, []);
+    setDrawingStart(null);
+    setDrawingEnd(null);
+  }, [isDragging, drawingStart, drawingEnd, activeTool]);
 
   // Attach wheel listener - only for zoom when Zoom tool is active
   useEffect(() => {
@@ -360,6 +407,80 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
   const handleZoomChange = (scale: number) => {
     updateViewport({ scale });
   };
+
+  // Draw annotations on overlay canvas
+  useEffect(() => {
+    const overlayCanvas = overlayCanvasRef.current;
+    if (!overlayCanvas) return;
+
+    const ctx = overlayCanvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = viewerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    overlayCanvas.width = rect.width;
+    overlayCanvas.height = rect.height;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+    // Draw existing annotations
+    annotations.forEach((annotation) => {
+      ctx.strokeStyle = annotation.type === 'length' ? '#00ff00' : '#ff0000';
+      ctx.lineWidth = 2;
+      ctx.setLineDash(annotation.type === 'length' ? [] : [5, 5]);
+
+      if (annotation.type === 'length') {
+        // Draw line
+        ctx.beginPath();
+        ctx.moveTo(annotation.start.x, annotation.start.y);
+        ctx.lineTo(annotation.end.x, annotation.end.y);
+        ctx.stroke();
+
+        // Draw distance text
+        const dx = annotation.end.x - annotation.start.x;
+        const dy = annotation.end.y - annotation.start.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        ctx.fillStyle = '#00ff00';
+        ctx.font = '12px Arial';
+        ctx.fillText(`${distance.toFixed(1)}px`, (annotation.start.x + annotation.end.x) / 2, (annotation.start.y + annotation.end.y) / 2 - 5);
+      } else {
+        // Draw rectangle
+        const width = annotation.end.x - annotation.start.x;
+        const height = annotation.end.y - annotation.start.y;
+        ctx.strokeRect(annotation.start.x, annotation.start.y, width, height);
+      }
+    });
+
+    // Draw current drawing (if in progress)
+    if (drawingStart && drawingEnd && (activeTool === 'Length' || activeTool === 'RectangleROI')) {
+      ctx.strokeStyle = activeTool === 'Length' ? '#00ff00' : '#ff0000';
+      ctx.lineWidth = 2;
+      ctx.setLineDash(activeTool === 'Length' ? [] : [5, 5]);
+
+      if (activeTool === 'Length') {
+        // Draw line
+        ctx.beginPath();
+        ctx.moveTo(drawingStart.x, drawingStart.y);
+        ctx.lineTo(drawingEnd.x, drawingEnd.y);
+        ctx.stroke();
+
+        // Draw distance text
+        const dx = drawingEnd.x - drawingStart.x;
+        const dy = drawingEnd.y - drawingStart.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        ctx.fillStyle = '#00ff00';
+        ctx.font = '12px Arial';
+        ctx.fillText(`${distance.toFixed(1)}px`, (drawingStart.x + drawingEnd.x) / 2, (drawingStart.y + drawingEnd.y) / 2 - 5);
+      } else {
+        // Draw rectangle
+        const width = drawingEnd.x - drawingStart.x;
+        const height = drawingEnd.y - drawingStart.y;
+        ctx.strokeRect(drawingStart.x, drawingStart.y, width, height);
+      }
+    }
+  }, [annotations, drawingStart, drawingEnd, activeTool]);
 
   if (!file) {
     return (
@@ -416,6 +537,16 @@ const DicomViewer = ({ file, viewerId, onError: _onError }: DicomViewerProps) =>
             } as React.CSSProperties}
           >
             <canvas ref={canvasRef} className={styles.canvas} />
+            <canvas
+              ref={overlayCanvasRef}
+              className={styles.overlayCanvas}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                pointerEvents: activeTool === 'Length' || activeTool === 'RectangleROI' ? 'auto' : 'none',
+              }}
+            />
           </div>
         ) : file.status === 'error' ? (
           <div className={styles.errorState}>

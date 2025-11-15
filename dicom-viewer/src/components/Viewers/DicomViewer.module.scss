@@ -78,6 +78,16 @@
   object-fit: contain;
 }
 
+.overlayCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
 .errorState {
   text-align: center;
   color: $error-color;

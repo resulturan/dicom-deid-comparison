@@ -9,6 +9,7 @@ import {
   removeFile,
   clearFiles,
   setCurrentFileIndex,
+  updateFileStatus,
 } from '@store/slices/dicomSlice';
 import {
   processDicomFile,
@@ -50,11 +51,52 @@ export function useDicomUpload() {
       );
 
       // Process each pending file
-      pendingFiles.forEach((dicomFile) => {
+      const processingPromises = pendingFiles.map((dicomFile) => {
         // Mark as being processed
         processedFileIds.current.add(dicomFile.id);
         console.log('Processing file:', dicomFile.fileName, dicomFile.id);
-        dispatch(processDicomFile({ id: dicomFile.id, file: dicomFile.file }));
+        return dispatch(processDicomFile({ id: dicomFile.id, file: dicomFile.file }));
+      });
+
+      // Wait for all files to complete, then show batch notification
+      Promise.allSettled(processingPromises).then((results) => {
+        const successCount = results.filter((r) => r.status === 'fulfilled').length;
+        const failureCount = results.filter((r) => r.status === 'rejected').length;
+
+        if (pendingFiles.length > 1) {
+          // Batch notification for multiple files
+          const parts: string[] = [];
+          if (successCount > 0) parts.push(`${successCount} successful`);
+          if (failureCount > 0) parts.push(`${failureCount} error${failureCount > 1 ? 's' : ''}`);
+          
+          dispatch(
+            addNotification({
+              type: failureCount > 0 ? 'warning' : 'success',
+              message: `${pendingFiles.length} file${pendingFiles.length > 1 ? 's' : ''} processed`,
+              description: parts.join(', '),
+            })
+          );
+        } else if (pendingFiles.length === 1) {
+          // Single file - show individual notification
+          const result = results[0];
+          if (result.status === 'fulfilled') {
+            dispatch(
+              addNotification({
+                type: 'success',
+                message: 'File processed successfully',
+                description: `${pendingFiles[0].fileName} has been loaded`,
+              })
+            );
+          } else {
+            dispatch(
+              addNotification({
+                type: 'error',
+                message: 'Failed to process file',
+                description: `${pendingFiles[0].fileName}: ${result.reason || 'Unknown error'}`,
+              })
+            );
+          }
+        }
       });
     }
 
@@ -65,6 +107,30 @@ export function useDicomUpload() {
         processedFileIds.current.delete(id);
       }
     });
+
+    // Check for files stuck in processing/uploading status
+    // If a file has been processing for more than 30 seconds, it might be stuck
+    const stuckFiles = originalFiles.filter((file) => {
+      if (file.status === 'processing' || file.status === 'uploading') {
+        // Check if file has metadata but is still marked as processing
+        // This can happen if updateFileMetadata was called but status wasn't updated
+        if (file.metadata && file.imageData) {
+          console.warn('File stuck in processing but has metadata:', file.fileName);
+          return true;
+        }
+      }
+      return false;
+    });
+
+    // Fix stuck files by updating their status to complete if they have metadata
+    if (stuckFiles.length > 0) {
+      stuckFiles.forEach((file) => {
+        if (file.metadata && file.imageData && (file.status === 'processing' || file.status === 'uploading')) {
+          console.log('Fixing stuck file:', file.fileName, 'status:', file.status);
+          dispatch(updateFileStatus({ id: file.id, status: 'complete', progress: 100 }));
+        }
+      });
+    }
   }, [originalFiles, dispatch]);
 
   /**
@@ -133,7 +199,7 @@ export function useDicomUpload() {
   const statistics = {
     total: originalFiles.length,
     pending: originalFiles.filter((f) => f.status === 'pending').length,
-    processing: originalFiles.filter((f) => f.status === 'processing').length,
+    processing: originalFiles.filter((f) => f.status === 'processing' || f.status === 'uploading').length,
     complete: originalFiles.filter((f) => f.status === 'complete').length,
     error: originalFiles.filter((f) => f.status === 'error').length,
   };

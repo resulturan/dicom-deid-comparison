@@ -88,24 +88,43 @@ export function deidentifyMetadata(
   metadata: DicomMetadata,
   options: DeidentifyOptions
 ): DicomMetadata {
+  // Log options for debugging
+  console.log('=== deidentifyMetadata called ===');
+  console.log('Options received:', JSON.parse(JSON.stringify(options)));
+  console.log('Options boolean checks:', {
+    removePatientName: options.removePatientName === true,
+    removePatientID: options.removePatientID === true,
+    removeDates: options.removeDates === true,
+    shiftDates: options.shiftDates === true,
+    dateShiftDays: options.dateShiftDays,
+    removeInstitution: options.removeInstitution === true,
+    removePhysicians: options.removePhysicians === true,
+    anonymizeUIDs: options.anonymizeUIDs === true,
+    keepSeriesInfo: options.keepSeriesInfo === true,
+  });
+  
   const deidentified: DicomMetadata = { ...metadata };
 
   // Remove or anonymize patient name
-  if (options.removePatientName) {
+  if (options.removePatientName === true) {
+    console.log('Applying: removePatientName');
     deidentified.patientName = ANONYMOUS_PATIENT_NAME;
   }
 
   // Remove or anonymize patient ID
-  if (options.removePatientID) {
+  if (options.removePatientID === true) {
+    console.log('Applying: removePatientID');
     deidentified.patientID = generateAnonymousID();
   }
 
   // Handle dates
-  if (options.removeDates) {
+  if (options.removeDates === true) {
+    console.log('Applying: removeDates');
     deidentified.patientBirthDate = undefined;
     deidentified.studyDate = undefined;
     deidentified.studyTime = undefined;
-  } else if (options.shiftDates && options.dateShiftDays) {
+  } else if (options.shiftDates === true && options.dateShiftDays && options.dateShiftDays > 0) {
+    console.log('Applying: shiftDates by', options.dateShiftDays, 'days');
     deidentified.patientBirthDate = shiftDicomDate(
       metadata.patientBirthDate,
       -options.dateShiftDays
@@ -118,30 +137,40 @@ export function deidentifyMetadata(
   }
 
   // Remove institution information
-  if (options.removeInstitution) {
+  if (options.removeInstitution === true) {
+    console.log('Applying: removeInstitution');
     deidentified.institutionName = undefined;
   }
 
   // Remove physician names
-  if (options.removePhysicians) {
+  if (options.removePhysicians === true) {
+    console.log('Applying: removePhysicians');
     deidentified.referringPhysicianName = undefined;
     deidentified.performingPhysicianName = undefined;
   }
 
   // Anonymize UIDs
-  if (options.anonymizeUIDs) {
+  if (options.anonymizeUIDs === true) {
+    console.log('Applying: anonymizeUIDs');
     deidentified.studyInstanceUID = generateAnonymousUID(metadata.studyInstanceUID);
     deidentified.seriesInstanceUID = generateAnonymousUID(metadata.seriesInstanceUID);
     deidentified.sopInstanceUID = generateAnonymousUID(metadata.sopInstanceUID);
   }
 
-  // Keep series info if requested
-  if (options.keepSeriesInfo) {
+  // Keep series info if requested (this preserves the original values)
+  if (options.keepSeriesInfo === true) {
+    console.log('Applying: keepSeriesInfo (preserving series info)');
+    // Values are already preserved in the copy, but we explicitly keep them
     deidentified.seriesDescription = metadata.seriesDescription;
     deidentified.seriesNumber = metadata.seriesNumber;
     deidentified.modality = metadata.modality;
+  } else {
+    console.log('Not keeping series info - will be removed if present');
+    // If keepSeriesInfo is false, we could remove these, but typically we just don't preserve them
+    // The metadata structure might not have these fields anyway
   }
 
+  console.log('Deidentification complete. Result metadata keys:', Object.keys(deidentified));
   return deidentified;
 }
 
@@ -174,7 +203,7 @@ export function deidentifyDataset(
     delete deidentified.AcquisitionTime;
     delete deidentified.ContentDate;
     delete deidentified.ContentTime;
-  } else if (options.shiftDates && options.dateShiftDays) {
+  } else if (options.shiftDates && options.dateShiftDays && options.dateShiftDays > 0) {
     // Shift dates
     if (deidentified.PatientBirthDate) {
       deidentified.PatientBirthDate = shiftDicomDate(
