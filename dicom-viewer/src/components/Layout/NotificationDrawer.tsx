@@ -159,7 +159,7 @@ const NotificationDrawer = () => {
                       <Text strong style={{ fontSize: 13 }}>
                         {notification.message}
                       </Text>
-                      <Tag color={getColor(notification.type)} size="small">
+                      <Tag color={getColor(notification.type)}>
                         {notification.type}
                       </Tag>
                     </Space>
