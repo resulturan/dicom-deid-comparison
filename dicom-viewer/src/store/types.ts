@@ -134,7 +134,7 @@ export interface UIState {
 
 export interface Notification {
   id: string;
-  type: 'success' | 'error' | 'info' | 'warning';
+  type: 'success' | 'error' | 'default' | 'warning';
   message: string;
   description?: string;
   duration?: number;
