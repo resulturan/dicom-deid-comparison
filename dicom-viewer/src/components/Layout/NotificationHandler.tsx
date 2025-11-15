@@ -32,13 +32,13 @@ const NotificationHandler = () => {
       success: newNotifications.filter((n) => n.type === 'success'),
       error: newNotifications.filter((n) => n.type === 'error'),
       warning: newNotifications.filter((n) => n.type === 'warning'),
-      info: newNotifications.filter((n) => n.type === 'info'),
+      default: newNotifications.filter((n) => n.type === 'default'),
     };
 
     const successCount = grouped.success.length;
     const errorCount = grouped.error.length;
     const warningCount = grouped.warning.length;
-    const infoCount = grouped.info.length;
+    const defaultCount = grouped.default.length;
 
     // Show summary notification
     if (newNotifications.length === 1) {
@@ -49,7 +49,11 @@ const NotificationHandler = () => {
           ? notif.duration / 1000
           : NOTIFICATION_DURATION[notif.type.toUpperCase() as keyof typeof NOTIFICATION_DURATION] / 1000;
 
-      api[notif.type]({
+      // Ant Design NotificationInstance only supports 'success', 'error', and 'warning' keys.
+      // We'll use 'info' for 'default' type.
+      const antType = notif.type === 'default' ? 'info' : notif.type;
+
+      api[antType]({
         message: notif.message,
         description: notif.description,
         duration,
@@ -64,10 +68,18 @@ const NotificationHandler = () => {
       if (successCount > 0) parts.push(`${successCount} successful`);
       if (errorCount > 0) parts.push(`${errorCount} error${errorCount > 1 ? 's' : ''}`);
       if (warningCount > 0) parts.push(`${warningCount} warning${warningCount > 1 ? 's' : ''}`);
-      if (infoCount > 0) parts.push(`${infoCount} info`);
+      if (defaultCount > 0) parts.push(`${defaultCount} default${defaultCount > 1 ? 's' : ''}`);
 
       const summaryMessage = parts.join(', ');
-      const primaryType = errorCount > 0 ? 'error' : warningCount > 0 ? 'warning' : successCount > 0 ? 'success' : 'info';
+      // Ant Design NotificationInstance only supports 'success', 'error', and 'warning' keys.
+      // We'll use 'info' for 'default' type.
+      const primaryType = errorCount > 0
+        ? 'error'
+        : warningCount > 0
+        ? 'warning'
+        : successCount > 0
+        ? 'success'
+        : 'info';
 
       api[primaryType]({
         message: `${newNotifications.length} file${newNotifications.length > 1 ? 's' : ''} processed`,

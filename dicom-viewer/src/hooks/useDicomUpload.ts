@@ -153,7 +153,7 @@ export function useDicomUpload() {
       // Notify user
       dispatch(
         addNotification({
-          type: 'info',
+          type: 'error',
           message: 'File removed',
         })
       );
@@ -169,7 +169,7 @@ export function useDicomUpload() {
 
     dispatch(
       addNotification({
-        type: 'info',
+        type: 'default',
         message: 'All files cleared',
       })
     );
