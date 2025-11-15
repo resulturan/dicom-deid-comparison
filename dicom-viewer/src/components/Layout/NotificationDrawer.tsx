@@ -28,14 +28,14 @@ const NotificationDrawer = () => {
     success: notifications.filter((n) => n.type === 'success'),
     error: notifications.filter((n) => n.type === 'error'),
     warning: notifications.filter((n) => n.type === 'warning'),
-    info: notifications.filter((n) => n.type === 'info'),
+    default: notifications.filter((n) => n.type === 'default'),
   };
 
   const totalCount = notifications.length;
   const successCount = groupedNotifications.success.length;
   const errorCount = groupedNotifications.error.length;
   const warningCount = groupedNotifications.warning.length;
-  const infoCount = groupedNotifications.info.length;
+  const defaultCount = groupedNotifications.default.length;
 
   const getIcon = (type: Notification['type']) => {
     switch (type) {
@@ -45,7 +45,7 @@ const NotificationDrawer = () => {
         return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
       case 'warning':
         return <ExclamationCircleOutlined style={{ color: '#faad14' }} />;
-      case 'info':
+      case 'default':
         return <InfoCircleOutlined style={{ color: '#1890ff' }} />;
     }
   };
@@ -58,7 +58,7 @@ const NotificationDrawer = () => {
         return 'error';
       case 'warning':
         return 'warning';
-      case 'info':
+      case 'default':
         return 'processing';
     }
   };
@@ -127,9 +127,9 @@ const NotificationDrawer = () => {
                     {warningCount} warning{warningCount > 1 ? 's' : ''}
                   </Tag>
                 )}
-                {infoCount > 0 && (
+                {defaultCount > 0 && (
                   <Tag color="processing" icon={<InfoCircleOutlined />}>
-                    {infoCount} info
+                    {defaultCount} default
                   </Tag>
                 )}
               </Space>
